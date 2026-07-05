@@ -6,3 +6,13 @@
 //GPS MODULE
 #define RXD2 16
 #define TXD2 17
+
+//LEDs
+#define RED
+#define GREEN
+#define BLUE
+
+//SPI BUS
+
+
+//IR
