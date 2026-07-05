@@ -1,1 +1,2 @@
-bootscreen() {}
+void bootscreen() {}
+

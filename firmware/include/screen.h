@@ -1,1 +1,1 @@
-bootscreen
+void bootscreen();

@@ -1,6 +1,19 @@
-#ifndef GPS_H
-#define GPS_H
+#include "TinyGPSPlus.h"
+#include "pins.h"
 
-void gps();
+#define GPS_BAUD 9600
+extern TinyGPSPlus gps;
+extern HardwareSerial gpsSerial;
 
-#endif
+// Update GPS dAta from serial
+void updateGPS();
+
+// GPS data getters
+bool isGPSValid();
+uint32_t getSatellites();
+double getHDOP();
+double getLatitude();
+double getLongitude();
+double getSpeed();
+double getAltitude();
+String getDateTime();
