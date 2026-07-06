@@ -33,22 +33,7 @@ Built with ❤️ by the **Hardware Pirates** — destined to steal your *golden
   <em>Check out our full zine in the repo!</em>
 </div>
 
----
 
-## 📋 BOM (Bill of Materials)
-
-| Designator | Function | Value/Part | Package | Qty | Price (USD) | Link |
-|------------|----------|------------|---------|-----|-------------|------|
-| MCU | Main Processor | ESP32-S3-DevKitC-1 | Module | 1 | ~$15 | [Buy](https://www.espressif.com/) |
-| Display | UI Screen | 1.8" 128x160 OLED | SPI | 1 | ~$10 | [AliExpress](https://www.aliexpress.com/) |
-| GPS | Navigation | NEO-6M | Module | 1 | ~$12 | [AliExpress](https://www.aliexpress.com/) |
-| RF Module | 2.4GHz Radio | nRF24L01+ | Module | 1 | ~$3 | [AliExpress](https://www.aliexpress.com/) |
-| Battery | Power | 2S1P 3200mAh Li-Ion | Pack | 1 | ~$20 | [Buy](https://www.batteryspace.com/) |
-| IR Module | Remote Control | 3-pin IR Receiver | Module | 1 | ~$2 | [AliExpress](https://www.aliexpress.com/) |
-
-*📌 Notice: These are just recommendations we've found to be secure and hopefully the cheapest possible options for your survival kit.*
-
----
 
 ## 🌟 Features
 
