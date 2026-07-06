@@ -126,7 +126,7 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 
 The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and RF TX remains disabled.
 
-Button input uses a 45 ms debounce window and a 140 ms repeat guard so one press does not generate multiple UI actions.
+Button input uses a 70 ms debounce window and a 220 ms repeat guard so one press does not generate multiple UI actions.
 
 ## Build and Upload
 

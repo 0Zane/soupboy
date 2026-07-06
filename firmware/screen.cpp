@@ -75,6 +75,8 @@ uint8_t avatarLine = 0;
 uint8_t lightMode = 0;
 bool dirty = true;
 uint32_t lastFrameAt = 0;
+WiFiScanState lastWifiDrawState = WiFiScanState::Idle;
+int lastWifiDrawCount = -1;
 
 const char *const tabLabels[kTabCount] = {
   "TOOLS",
@@ -299,15 +301,11 @@ void prepareEntry(EntryKind entry) {
 
 void enterSubmenu() {
   activeEntry = selectedEntry().kind;
-  transitionWipe();
   view = View::Submenu;
   dirty = true;
 }
 
 void showNavbar() {
-  if (view != View::Navbar) {
-    transitionWipe();
-  }
   view = View::Navbar;
   dirty = true;
 }
@@ -397,6 +395,126 @@ void drawNavbar() {
   centerText(90, String(entryCountFor(tab)) + " FEATURES", COL_GREEN_DIM);
 
   drawFooter("L/R TAB  SEL ENTER");
+}
+
+void drawSubmenuSelector() {
+  const Tab tab = activeTab();
+  const uint8_t selected = selectedFor(tab);
+  const uint8_t count = entryCountFor(tab);
+  const MenuEntry &entry = selectedEntry();
+
+  tft.fillRect(0, kTabBarHeight, screenW(), 28, COL_PANEL_2);
+  tft.drawFastHLine(0, kTabBarHeight + 28, screenW(), COL_GREEN_DIM);
+  textAt(9, kTabBarHeight + 9, "<", COL_GREEN);
+  textAt(screenW() - 15, kTabBarHeight + 9, ">", COL_GREEN);
+
+  tft.fillRoundRect(25, kTabBarHeight + 5, screenW() - 50, 18, 3, COL_AMBER);
+  centerText(kTabBarHeight + 10, clipped(String(entry.label), 18), COL_DARK_TEXT);
+
+  const String countText = String(selected + 1) + "/" + String(count);
+  textAt(screenW() - 26, kTabBarHeight + 31, countText, COL_GREEN_DIM);
+}
+
+void drawSubmenuContent() {
+  const int16_t y0 = 60;
+  const EntryKind entry = activeEntry;
+
+  if (entry == EntryKind::WifiScan) {
+    textAt(8, y0, "Passive scan only", COL_AMBER);
+    const WiFiScanState state = wifiScanState();
+    if (state == WiFiScanState::Idle) {
+      textAt(8, y0 + 14, "Press select to scan", COL_TEXT);
+    } else if (state == WiFiScanState::Scanning) {
+      textAt(8, y0 + 14, "Scanning...", COL_GREEN);
+    } else if (state == WiFiScanState::Failed) {
+      textAt(8, y0 + 14, "Scan failed", COL_RED);
+    } else {
+      textAt(8, y0 + 14, String("Networks: ") + String(wifiScanCount()), COL_GREEN);
+      const int count = wifiScanCount() < 2 ? wifiScanCount() : 2;
+      for (int i = 0; i < count; ++i) {
+        const int16_t y = y0 + 30 + i * 12;
+        String ssid = clipped(wifiSSID(i), 13);
+        if (ssid.length() == 0) {
+          ssid = "<hidden>";
+        }
+        textAt(8, y, ssid, COL_TEXT);
+        textAt(102, y, String(wifiRSSI(i)) + "dB", COL_GREEN_DIM);
+      }
+    }
+  } else if (entry == EntryKind::Gps) {
+    if (gpsCharsProcessed() == 0) {
+      textAt(8, y0, "GPS module offline", COL_AMBER);
+      textAt(8, y0 + 15, "Waiting for NMEA", COL_TEXT);
+    } else if (!isGPSValid()) {
+      textAt(8, y0, "Fix awaiting lock", COL_AMBER);
+      textAt(8, y0 + 15, String("Satellites: ") + String(getSatellites()), COL_TEXT);
+      textAt(8, y0 + 30, String("HDOP: ") + String(getHDOP(), 1), COL_TEXT);
+    } else {
+      textAt(8, y0, "Fix valid", COL_GREEN);
+      textAt(8, y0 + 14, String("Lat ") + String(getLatitude(), 4), COL_TEXT);
+      textAt(8, y0 + 28, String("Lon ") + String(getLongitude(), 4), COL_TEXT);
+      textAt(8, y0 + 42, String("Sat ") + String(getSatellites()), COL_TEXT);
+    }
+  } else if (entry == EntryKind::Light) {
+    const char *modeText = "standby";
+    if (lightMode == 1) {
+      modeText = "beacon A";
+    } else if (lightMode == 2) {
+      modeText = "beacon B";
+    } else if (lightMode == 3) {
+      modeText = "laser on";
+    }
+    textAt(8, y0, "Select cycles output", COL_GREEN);
+    textAt(8, y0 + 16, String("Mode: ") + modeText, COL_TEXT);
+    textAt(8, y0 + 32, lightMode == 3 ? "GPIO14: HIGH" : "GPIO14: LOW", lightMode == 3 ? COL_RED : COL_AMBER);
+    tft.drawCircle(134, y0 + 27, 13, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
+    if (lightMode != 0) {
+      tft.fillCircle(134, y0 + 27, 7, lightMode == 3 ? COL_RED : COL_AMBER_DIM);
+    }
+  } else if (entry == EntryKind::Avatar) {
+    drawAvatarBitmap(10, y0 - 2);
+    textAt(67, y0 + 3, clipped(String(avatarLines[avatarLine]), 14), COL_TEXT);
+    textAt(67, y0 + 19, "Select changes line", COL_GREEN_DIM);
+    textAt(67, y0 + 35, "Soup ready", COL_AMBER);
+  } else if (entry == EntryKind::Status) {
+    const NrfStatus rf = nrfStatus();
+    textAt(8, y0, String("Uptime: ") + uptimeString(), COL_TEXT);
+    textAt(8, y0 + 14, String("Battery: ") + batteryStatusText(), COL_TEXT);
+    textAt(8, y0 + 28, String("GPS: ") + (isGPSValid() ? "fix" : "standby"), COL_TEXT);
+    textAt(8, y0 + 42, String("RF: ") + (rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
+  } else if (entry == EntryKind::Battery) {
+    const float volts = batteryVoltage();
+    const int pct = batteryPercent();
+    textAt(8, y0, pct >= 0 ? String("Battery: ") + String(pct) + "%" : String("Battery: offline"), COL_TEXT);
+    textAt(8, y0 + 16, String("Voltage: ") + String(volts, 2) + "V", COL_TEXT);
+    textAt(8, y0 + 32, String("Status: ") + batteryStatusText(), COL_AMBER);
+    const int barWidth = pct >= 0 ? map(pct, 0, 100, 0, 70) : 0;
+    tft.drawRect(83, y0 + 2, 74, 12, COL_GREEN_DIM);
+    tft.fillRect(85, y0 + 4, barWidth, 8, pct >= 0 && pct < 20 ? COL_RED : COL_GREEN);
+  } else if (entry == EntryKind::SystemInfo) {
+    textAt(8, y0, SOUPBOY_BUILD_NAME, COL_AMBER);
+    textAt(8, y0 + 15, "MCU: ESP32-S3", COL_TEXT);
+    textAt(8, y0 + 30, String("Display: ") + String(screenW()) + "x" + String(screenH()), COL_TEXT);
+    textAt(8, y0 + 45, "RF TX: disabled", COL_GREEN);
+  } else if (entry == EntryKind::About) {
+    centerText(y0, "SOUPBOY", COL_AMBER, 2);
+    centerText(y0 + 25, "Hardware Pirates", COL_GREEN);
+    centerText(y0 + 40, "Fallout Hackathon", COL_TEXT);
+  } else if (entry == EntryKind::RfSafe) {
+    const NrfStatus rf = nrfStatus();
+    textAt(8, y0, "RF TX disabled", COL_GREEN);
+    textAt(8, y0 + 15, rf.moduleDetected ? "Module detected" : "Module offline", COL_TEXT);
+    textAt(8, y0 + 30, clipped(String(rf.message), 19), COL_GREEN_DIM);
+    textAt(8, y0 + 45, "Select refreshes", COL_AMBER);
+  }
+}
+
+void drawSubmenu() {
+  clearScreen();
+  drawTabBar();
+  drawSubmenuSelector();
+  drawSubmenuContent();
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawAvatar() {
@@ -606,14 +724,7 @@ void drawDetail() {
 }
 
 bool isAnimated() {
-  if (view == View::Navbar) {
-    return false;
-  }
-
-  return activeEntry == EntryKind::Avatar ||
-         activeEntry == EntryKind::RfSafe ||
-         activeEntry == EntryKind::WifiScan ||
-         activeEntry == EntryKind::Light;
+  return false;
 }
 
 }  // namespace
@@ -655,6 +766,10 @@ void screenShowBoot() {
 
 void screenUpdate(InputEvent event) {
   wifiScanUpdate();
+  if (view == View::Submenu && activeEntry == EntryKind::WifiScan &&
+      (wifiScanState() != lastWifiDrawState || wifiScanCount() != lastWifiDrawCount)) {
+    dirty = true;
+  }
   handleEvent(event);
 
   const uint32_t now = millis();
@@ -668,8 +783,11 @@ void screenUpdate(InputEvent event) {
   if (view == View::Navbar) {
     drawNavbar();
   } else {
-    drawDetail();
+    drawSubmenu();
   }
+
+  lastWifiDrawState = wifiScanState();
+  lastWifiDrawCount = wifiScanCount();
 }
 
 const char *screenBuildName() {

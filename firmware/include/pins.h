@@ -26,9 +26,9 @@ constexpr int PIN_BUTTON_PREV = PIN_BUTTON_LEFT;
 constexpr int PIN_BUTTON_SELECT = PIN_BUTTON_MIDDLE;
 constexpr int PIN_BUTTON_NEXT = PIN_BUTTON_RIGHT;
 constexpr bool BUTTON_ACTIVE_HIGH = true;
-constexpr uint16_t BUTTON_DEBOUNCE_MS = 45;
-constexpr uint16_t BUTTON_EVENT_GUARD_MS = 140;
-constexpr uint16_t BUTTON_LONG_PRESS_MS = 700;
+constexpr uint16_t BUTTON_DEBOUNCE_MS = 70;
+constexpr uint16_t BUTTON_EVENT_GUARD_MS = 220;
+constexpr uint16_t BUTTON_LONG_PRESS_MS = 850;
 
 // Battery divider: +BATT -> 100K -> GPIO2/INT -> 100K -> GND.
 constexpr int PIN_BATTERY_ADC = 2;

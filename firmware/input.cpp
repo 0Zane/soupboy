@@ -42,16 +42,13 @@ InputEvent updateButton(ButtonState &button, uint32_t now) {
     if (button.stableState) {
       button.pressedAt = now;
       button.holdSent = false;
-    } else if (!button.holdSent) {
-      return button.tapEvent;
+    } else {
+      const bool heldLongEnough =
+          button.holdEvent != InputEvent::None &&
+          (now - button.pressedAt) >= BUTTON_LONG_PRESS_MS;
+      button.holdSent = false;
+      return heldLongEnough ? button.holdEvent : button.tapEvent;
     }
-  }
-
-  if (button.stableState && !button.holdSent &&
-      button.holdEvent != InputEvent::None &&
-      (now - button.pressedAt) >= BUTTON_LONG_PRESS_MS) {
-    button.holdSent = true;
-    return button.holdEvent;
   }
 
   return InputEvent::None;
