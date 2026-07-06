@@ -17,7 +17,6 @@ add cool futuristic visuals if you can */
 void drawmenu(){}
 
 /*Page 2 TOOLS
-Button: AIR SCAN --> popup (air humidity, air temperature, air pressure)
 Button: COPY IR --> listening to IR signal
 Button: emit last IR --> emits the last copied IR signal
 button: get GPS coordonates
