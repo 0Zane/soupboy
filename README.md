@@ -91,7 +91,7 @@ The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It
 - Boot sequence with SoupBoy OS branding
 - Wrist layout with the display rotated to a 160x128 view
 - Top navigation tabs for Tools, Device, and RF
-- Three-button navigation with short press for up/down/select and long press for left/right/back
+- Three-button navigation with short press for up/down/select and long press for left/right/home
 - Soup avatar bitmap generated from `soup-avatar.png`
 - Safe tools pages for RF, BLE, GPS, light/laser, battery, WiFi, and system info
 - Passive WiFi scanning only
@@ -111,7 +111,7 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 | Display CS | GPIO10 |
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
-| Button BT1 / Select, hold Back | GPIO6 |
+| Button BT1 / Select, hold Home | GPIO6 |
 | Button BT2 / Previous, hold Left tab | GPIO4 |
 | Button BT3 / Next, hold Right tab | GPIO5 |
 | Battery divider / INT label | GPIO2 |

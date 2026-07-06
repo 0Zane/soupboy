@@ -316,10 +316,12 @@ void openSelectedEntry() {
   dirty = true;
 }
 
-void showMenu() {
-  if (view != View::Menu) {
+void showMainMenu() {
+  if (view != View::Menu || tabIndex != static_cast<uint8_t>(Tab::Tools)) {
     transitionWipe();
   }
+  tabIndex = static_cast<uint8_t>(Tab::Tools);
+  selectedFor(Tab::Tools) = 0;
   view = View::Menu;
   dirty = true;
 }
@@ -357,12 +359,14 @@ void handleMenu(InputEvent event) {
     moveTab(1);
   } else if (event == InputEvent::Select) {
     openSelectedEntry();
+  } else if (event == InputEvent::Back) {
+    showMainMenu();
   }
 }
 
 void handleDetail(InputEvent event) {
   if (event == InputEvent::Back) {
-    showMenu();
+    showMainMenu();
     return;
   }
 
@@ -446,7 +450,7 @@ void drawAvatar() {
   textAt(71, 72, "tiny soup", COL_GREEN_DIM);
   textAt(71, 84, "guardian", COL_GREEN_DIM);
 
-  drawFooter("NEXT LINE  HOLD SEL BACK");
+  drawFooter("NEXT LINE  HOLD SEL HOME");
 }
 
 void drawRfSafe() {
@@ -507,7 +511,7 @@ void drawWifiScan() {
     }
   }
 
-  drawFooter("SEL RESCAN  HOLD SEL BACK");
+  drawFooter("SEL RESCAN  HOLD SEL HOME");
 }
 
 void drawBleSafe() {
@@ -519,7 +523,7 @@ void drawBleSafe() {
   textAt(8, 78, "Diagnostics only", COL_TEXT);
   textAt(8, 93, "Demo placeholder", COL_GREEN_DIM);
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawGpsTool() {
@@ -541,7 +545,7 @@ void drawGpsTool() {
     textAt(8, 100, String("Spd ") + String(getSpeed(), 1) + "km/h", COL_TEXT);
   }
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawLightTool() {
@@ -565,7 +569,7 @@ void drawLightTool() {
     tft.fillCircle(132, 88, 8, COL_AMBER_DIM);
   }
 
-  drawFooter("SEL CYCLES  HOLD SEL BACK");
+  drawFooter("SEL CYCLES  HOLD SEL HOME");
 }
 
 void drawBatteryTool() {
@@ -584,7 +588,7 @@ void drawBatteryTool() {
   tft.drawRect(91, 101, 64, 12, COL_GREEN_DIM);
   tft.fillRect(93, 103, barWidth, 8, pct < 20 ? COL_RED : COL_GREEN);
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawSystemTool() {
@@ -599,7 +603,7 @@ void drawSystemTool() {
   textAt(108, 86, "RF TX", COL_GREEN_DIM);
   textAt(108, 99, "OFF", COL_GREEN);
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawStatus() {
@@ -613,7 +617,7 @@ void drawStatus() {
   textAt(8, 85, String("RF: ") + String(rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
   textAt(8, 98, "WiFi: passive scan", COL_TEXT);
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawAbout() {
@@ -625,7 +629,7 @@ void drawAbout() {
   centerText(88, "Fallout Hackathon", COL_TEXT);
   centerText(102, "Stay warm. Stay soupy.", COL_TEXT);
 
-  drawFooter("HOLD SEL BACK");
+  drawFooter("HOLD SEL HOME");
 }
 
 void drawDetail() {
