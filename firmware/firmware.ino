@@ -27,7 +27,7 @@ void setup() {
   screenShowBoot();
 
   Serial.println(screenBuildName());
-  Serial.println("RF/BLE TX tools disabled. Passive WiFi scan only.");
+  Serial.println("RF TX disabled until nRF pins are mapped. Passive WiFi scan only.");
 }
 
 void loop() {

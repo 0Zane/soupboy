@@ -19,11 +19,15 @@ constexpr int SCREEN_ROTATION = 1;
 
 // Physical buttons. The schematic drives these from a 3V3 ladder, so they are
 // treated as active-high with internal pulldowns.
-constexpr int PIN_BUTTON_SELECT = 6;  // BT1
-constexpr int PIN_BUTTON_PREV = 4;    // BT2
-constexpr int PIN_BUTTON_NEXT = 5;    // BT3
+constexpr int PIN_BUTTON_LEFT = 6;
+constexpr int PIN_BUTTON_MIDDLE = 42;
+constexpr int PIN_BUTTON_RIGHT = 5;
+constexpr int PIN_BUTTON_PREV = PIN_BUTTON_LEFT;
+constexpr int PIN_BUTTON_SELECT = PIN_BUTTON_MIDDLE;
+constexpr int PIN_BUTTON_NEXT = PIN_BUTTON_RIGHT;
 constexpr bool BUTTON_ACTIVE_HIGH = true;
-constexpr uint16_t BUTTON_DEBOUNCE_MS = 35;
+constexpr uint16_t BUTTON_DEBOUNCE_MS = 45;
+constexpr uint16_t BUTTON_EVENT_GUARD_MS = 140;
 constexpr uint16_t BUTTON_LONG_PRESS_MS = 700;
 
 // Battery divider: +BATT -> 100K -> GPIO2/INT -> 100K -> GND.

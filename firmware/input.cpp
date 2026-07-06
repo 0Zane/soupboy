@@ -21,10 +21,12 @@ bool readButton(int pin) {
 }
 
 ButtonState buttons[] = {
-  {PIN_BUTTON_PREV, InputEvent::Previous, InputEvent::Left, false, false, false, 0, 0},
-  {PIN_BUTTON_NEXT, InputEvent::Next, InputEvent::Right, false, false, false, 0, 0},
-  {PIN_BUTTON_SELECT, InputEvent::Select, InputEvent::Back, false, false, false, 0, 0},
+  {PIN_BUTTON_LEFT, InputEvent::Left, InputEvent::None, false, false, false, 0, 0},
+  {PIN_BUTTON_RIGHT, InputEvent::Right, InputEvent::None, false, false, false, 0, 0},
+  {PIN_BUTTON_MIDDLE, InputEvent::Select, InputEvent::Home, false, false, false, 0, 0},
 };
+
+uint32_t lastEventAt = 0;
 
 InputEvent updateButton(ButtonState &button, uint32_t now) {
   const bool reading = readButton(button.pin);
@@ -60,6 +62,7 @@ InputEvent updateButton(ButtonState &button, uint32_t now) {
 void inputBegin() {
   const int mode = BUTTON_ACTIVE_HIGH ? INPUT_PULLDOWN : INPUT_PULLUP;
   const uint32_t now = millis();
+  lastEventAt = now - BUTTON_EVENT_GUARD_MS;
 
   for (ButtonState &button : buttons) {
     pinMode(button.pin, mode);
@@ -76,6 +79,10 @@ InputEvent inputUpdate() {
   for (ButtonState &button : buttons) {
     const InputEvent event = updateButton(button, now);
     if (event != InputEvent::None) {
+      if (now - lastEventAt < BUTTON_EVENT_GUARD_MS) {
+        return InputEvent::None;
+      }
+      lastEventAt = now;
       return event;
     }
   }

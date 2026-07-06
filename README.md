@@ -91,11 +91,12 @@ The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It
 - Boot sequence with SoupBoy OS branding
 - Wrist layout with the display rotated to a 160x128 view
 - Top navigation tabs for Tools, Device, and RF
-- Three-button navigation with short press for up/down/select and long press for left/right/home
+- Navbar-first navigation: left/right changes tabs, select enters the tab submenu, and holding select returns to the navbar
+- Submenu navigation: left/right changes the selected feature button, and select activates that feature
 - Soup avatar bitmap generated from `soup-avatar.png`
-- Safe tools pages for RF, BLE, GPS, light/laser, battery, WiFi, and system info
+- Working pages for WiFi scan, GPS, light/laser, battery, status, system info, avatar, about, and RF diagnostics
 - Passive WiFi scanning only
-- RF/BLE transmit actions disabled
+- RF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
 - GPS and RF pages fail gracefully when modules are offline
 
 No temperature or weather-station features are implemented.
@@ -111,19 +112,21 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 | Display CS | GPIO10 |
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
-| Button BT1 / Select, hold Home | GPIO6 |
-| Button BT2 / Previous, hold Left tab | GPIO4 |
-| Button BT3 / Next, hold Right tab | GPIO5 |
+| Button Left | GPIO6 |
+| Button Middle / Select, hold Navbar | GPIO42 |
+| Button Right | GPIO5 |
 | Battery divider / INT label | GPIO2 |
 | GPS RX | GPIO16 |
 | GPS TX | GPIO17 |
 | GPS PPS / shared label | GPIO13 |
-| Signal / laser control | GPIO14, held LOW by default |
+| Signal / laser control | GPIO14, off by default; Light/Laser feature can drive HIGH |
 | LED1 | GPIO15 |
 | LED2 | GPIO18 |
 | LED3 | GPIO21 |
 
 The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and RF TX remains disabled.
+
+Button input uses a 45 ms debounce window and a 140 ms repeat guard so one press does not generate multiple UI actions.
 
 ## Build and Upload
 

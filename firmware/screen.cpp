@@ -40,8 +40,8 @@ constexpr int16_t kFooterHeight = 14;
 Adafruit_ST7735 tft(PIN_DISPLAY_CS, PIN_DISPLAY_DC, PIN_DISPLAY_RST);
 
 enum class View : uint8_t {
-  Menu,
-  Detail,
+  Navbar,
+  Submenu,
 };
 
 enum class Tab : uint8_t {
@@ -60,7 +60,6 @@ enum class EntryKind : uint8_t {
   SystemInfo,
   About,
   RfSafe,
-  BleSafe,
 };
 
 struct MenuEntry {
@@ -68,7 +67,7 @@ struct MenuEntry {
   EntryKind kind;
 };
 
-View view = View::Menu;
+View view = View::Navbar;
 uint8_t tabIndex = static_cast<uint8_t>(Tab::Tools);
 uint8_t selectedByTab[kTabCount] = {0, 0, 0};
 EntryKind activeEntry = EntryKind::WifiScan;
@@ -99,7 +98,6 @@ const MenuEntry deviceItems[] = {
 
 const MenuEntry rfItems[] = {
   {"RF Safe", EntryKind::RfSafe},
-  {"BLE Safe", EntryKind::BleSafe},
 };
 
 const char *const avatarLines[] = {
@@ -199,6 +197,11 @@ void centerText(int16_t y, const char *text, uint16_t color, uint8_t size = 1) {
   textAt((screenW() - width) / 2, y, text, color, size);
 }
 
+void centerText(int16_t y, const String &text, uint16_t color, uint8_t size = 1) {
+  const int16_t width = text.length() * 6 * size;
+  textAt((screenW() - width) / 2, y, text, color, size);
+}
+
 void rightText(int16_t y, const char *text, uint16_t color) {
   const int16_t width = strlen(text) * 6;
   textAt(screenW() - width - 6, y, text, color);
@@ -259,20 +262,6 @@ void drawDetailHeader(const char *title, const char *status) {
   rightText(kTabBarHeight + 6, status, COL_AMBER);
 }
 
-void drawMenuRow(int16_t y, const char *label, bool selected) {
-  const int16_t rowX = 8;
-  const int16_t rowW = screenW() - 16;
-
-  if (selected) {
-    tft.fillRoundRect(rowX, y - 2, rowW, 15, 2, COL_AMBER);
-    textAt(rowX + 7, y + 2, ">", COL_DARK_TEXT);
-    textAt(rowX + 20, y + 2, clipped(String(label), (rowW - 26) / 6), COL_DARK_TEXT);
-  } else {
-    tft.drawRoundRect(rowX, y - 2, rowW, 15, 2, COL_GREEN_DIM);
-    textAt(rowX + 20, y + 2, clipped(String(label), (rowW - 26) / 6), COL_TEXT);
-  }
-}
-
 void drawAvatarBitmap(int16_t x, int16_t y) {
   tft.drawRGBBitmap(x, y, SOUP_AVATAR_RGB565, SOUP_AVATAR_WIDTH, SOUP_AVATAR_HEIGHT);
 }
@@ -295,7 +284,7 @@ void transitionWipe() {
 }
 
 void applyLightMode() {
-  digitalWrite(PIN_SIGNAL_OUT, LOW);
+  digitalWrite(PIN_SIGNAL_OUT, lightMode == 3 ? HIGH : LOW);
   ledSet(1, lightMode == 1);
   ledSet(2, lightMode == 2);
 }
@@ -308,21 +297,18 @@ void prepareEntry(EntryKind entry) {
   }
 }
 
-void openSelectedEntry() {
+void enterSubmenu() {
   activeEntry = selectedEntry().kind;
-  prepareEntry(activeEntry);
   transitionWipe();
-  view = View::Detail;
+  view = View::Submenu;
   dirty = true;
 }
 
-void showMainMenu() {
-  if (view != View::Menu || tabIndex != static_cast<uint8_t>(Tab::Tools)) {
+void showNavbar() {
+  if (view != View::Navbar) {
     transitionWipe();
   }
-  tabIndex = static_cast<uint8_t>(Tab::Tools);
-  selectedFor(Tab::Tools) = 0;
-  view = View::Menu;
+  view = View::Navbar;
   dirty = true;
 }
 
@@ -333,72 +319,59 @@ void moveSelection(int8_t delta) {
   selected = (selected + count + delta) % count;
   dirty = true;
 
-  if (view == View::Detail) {
+  if (view == View::Submenu) {
     activeEntry = selectedEntry().kind;
-    prepareEntry(activeEntry);
   }
 }
 
 void moveTab(int8_t delta) {
   tabIndex = (tabIndex + kTabCount + delta) % kTabCount;
-  if (view == View::Detail) {
-    activeEntry = selectedEntry().kind;
-    prepareEntry(activeEntry);
-  }
   dirty = true;
 }
 
-void handleMenu(InputEvent event) {
-  if (event == InputEvent::Previous) {
-    moveSelection(-1);
-  } else if (event == InputEvent::Next) {
-    moveSelection(1);
-  } else if (event == InputEvent::Left) {
+void activateEntry() {
+  prepareEntry(activeEntry);
+
+  if (activeEntry == EntryKind::WifiScan) {
+    wifiScanStart();
+  } else if (activeEntry == EntryKind::Light) {
+    lightMode = (lightMode + 1) % 4;
+    applyLightMode();
+  } else if (activeEntry == EntryKind::Avatar) {
+    avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
+  } else if (activeEntry == EntryKind::Gps) {
+    updateGPS();
+  } else if (activeEntry == EntryKind::RfSafe) {
+    nrfBegin();
+  }
+
+  dirty = true;
+}
+
+void handleNavbar(InputEvent event) {
+  if (event == InputEvent::Left) {
     moveTab(-1);
   } else if (event == InputEvent::Right) {
     moveTab(1);
   } else if (event == InputEvent::Select) {
-    openSelectedEntry();
-  } else if (event == InputEvent::Back) {
-    showMainMenu();
+    enterSubmenu();
+  } else if (event == InputEvent::Home) {
+    showNavbar();
   }
 }
 
-void handleDetail(InputEvent event) {
-  if (event == InputEvent::Back) {
-    showMainMenu();
+void handleSubmenu(InputEvent event) {
+  if (event == InputEvent::Home) {
+    showNavbar();
     return;
   }
 
-  if (event == InputEvent::Previous) {
-    if (activeEntry == EntryKind::Avatar) {
-      avatarLine = (avatarLine + (sizeof(avatarLines) / sizeof(avatarLines[0])) - 1) %
-                   (sizeof(avatarLines) / sizeof(avatarLines[0]));
-      dirty = true;
-    } else {
-      moveSelection(-1);
-    }
-  } else if (event == InputEvent::Next) {
-    if (activeEntry == EntryKind::Avatar) {
-      avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
-      dirty = true;
-    } else {
-      moveSelection(1);
-    }
-  } else if (event == InputEvent::Left) {
-    moveTab(-1);
+  if (event == InputEvent::Left) {
+    moveSelection(-1);
   } else if (event == InputEvent::Right) {
-    moveTab(1);
-  } else if (event == InputEvent::Select && activeEntry == EntryKind::WifiScan) {
-    wifiScanStart();
-    dirty = true;
-  } else if (event == InputEvent::Select && activeEntry == EntryKind::Light) {
-    lightMode = (lightMode + 1) % 3;
-    applyLightMode();
-    dirty = true;
-  } else if (event == InputEvent::Select && activeEntry == EntryKind::Avatar) {
-    avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
-    dirty = true;
+    moveSelection(1);
+  } else if (event == InputEvent::Select) {
+    activateEntry();
   }
 }
 
@@ -407,27 +380,23 @@ void handleEvent(InputEvent event) {
     return;
   }
 
-  if (view == View::Menu) {
-    handleMenu(event);
+  if (view == View::Navbar) {
+    handleNavbar(event);
   } else {
-    handleDetail(event);
+    handleSubmenu(event);
   }
 }
 
-void drawMenu() {
+void drawNavbar() {
   clearScreen();
   drawTabBar();
 
   const Tab tab = activeTab();
-  const MenuEntry *items = entriesFor(tab);
-  const uint8_t count = entryCountFor(tab);
-  const uint8_t selected = selectedFor(tab);
+  centerText(45, tabLabels[tabIndex], COL_AMBER, 2);
+  centerText(72, "SELECT TO ENTER", COL_TEXT);
+  centerText(90, String(entryCountFor(tab)) + " FEATURES", COL_GREEN_DIM);
 
-  for (uint8_t i = 0; i < count; ++i) {
-    drawMenuRow(30 + i * 17, items[i].label, i == selected);
-  }
-
-  drawFooter("UP/DN ITEM  HOLD L/R TAB");
+  drawFooter("L/R TAB  SEL ENTER");
 }
 
 void drawAvatar() {
@@ -450,7 +419,7 @@ void drawAvatar() {
   textAt(71, 72, "tiny soup", COL_GREEN_DIM);
   textAt(71, 84, "guardian", COL_GREEN_DIM);
 
-  drawFooter("NEXT LINE  HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawRfSafe() {
@@ -470,7 +439,7 @@ void drawRfSafe() {
     tft.fillRect(120 + i * 6, 104 - h, 2, h - 1, i < 3 ? COL_GREEN : COL_AMBER);
   }
 
-  drawFooter(nrfSafeModeText());
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawWifiScan() {
@@ -511,19 +480,7 @@ void drawWifiScan() {
     }
   }
 
-  drawFooter("SEL RESCAN  HOLD SEL HOME");
-}
-
-void drawBleSafe() {
-  clearScreen();
-  drawDetailHeader("BLE SAFE", "LOCK");
-
-  textAt(8, 48, "BLE TX: disabled", COL_AMBER);
-  textAt(8, 63, "Passive BLE: offline", COL_TEXT);
-  textAt(8, 78, "Diagnostics only", COL_TEXT);
-  textAt(8, 93, "Demo placeholder", COL_GREEN_DIM);
-
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawGpsTool() {
@@ -545,7 +502,7 @@ void drawGpsTool() {
     textAt(8, 100, String("Spd ") + String(getSpeed(), 1) + "km/h", COL_TEXT);
   }
 
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawLightTool() {
@@ -557,19 +514,21 @@ void drawLightTool() {
     modeText = "beacon A";
   } else if (lightMode == 2) {
     modeText = "beacon B";
+  } else if (lightMode == 3) {
+    modeText = "laser on";
   }
 
   textAt(8, 49, "LED beacon:", COL_GREEN);
   textAt(78, 49, modeText, COL_TEXT);
-  textAt(8, 66, "Laser: locked", COL_AMBER);
-  textAt(8, 82, "SIG GPIO14: LOW", COL_TEXT);
+  textAt(8, 66, lightMode == 3 ? "Laser: active" : "Laser: standby", lightMode == 3 ? COL_RED : COL_AMBER);
+  textAt(8, 82, lightMode == 3 ? "SIG GPIO14: HIGH" : "SIG GPIO14: LOW", COL_TEXT);
 
   tft.drawCircle(132, 88, 14, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
   if (lightMode != 0) {
     tft.fillCircle(132, 88, 8, COL_AMBER_DIM);
   }
 
-  drawFooter("SEL CYCLES  HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawBatteryTool() {
@@ -588,7 +547,7 @@ void drawBatteryTool() {
   tft.drawRect(91, 101, 64, 12, COL_GREEN_DIM);
   tft.fillRect(93, 103, barWidth, 8, pct < 20 ? COL_RED : COL_GREEN);
 
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawSystemTool() {
@@ -603,7 +562,7 @@ void drawSystemTool() {
   textAt(108, 86, "RF TX", COL_GREEN_DIM);
   textAt(108, 99, "OFF", COL_GREEN);
 
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawStatus() {
@@ -617,7 +576,7 @@ void drawStatus() {
   textAt(8, 85, String("RF: ") + String(rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
   textAt(8, 98, "WiFi: passive scan", COL_TEXT);
 
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawAbout() {
@@ -629,7 +588,7 @@ void drawAbout() {
   centerText(88, "Fallout Hackathon", COL_TEXT);
   centerText(102, "Stay warm. Stay soupy.", COL_TEXT);
 
-  drawFooter("HOLD SEL HOME");
+  drawFooter("L/R ITEM SEL RUN HOLD NAV");
 }
 
 void drawDetail() {
@@ -643,12 +602,11 @@ void drawDetail() {
     case EntryKind::SystemInfo: drawSystemTool(); break;
     case EntryKind::About: drawAbout(); break;
     case EntryKind::RfSafe: drawRfSafe(); break;
-    case EntryKind::BleSafe: drawBleSafe(); break;
   }
 }
 
 bool isAnimated() {
-  if (view == View::Menu) {
+  if (view == View::Navbar) {
     return false;
   }
 
@@ -707,8 +665,8 @@ void screenUpdate(InputEvent event) {
   lastFrameAt = now;
   dirty = false;
 
-  if (view == View::Menu) {
-    drawMenu();
+  if (view == View::Navbar) {
+    drawNavbar();
   } else {
     drawDetail();
   }
