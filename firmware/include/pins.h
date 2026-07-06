@@ -8,8 +8,8 @@
 // 1.8" 128x160 SPI display. Rotation 1 turns the full UI for the wrist mount
 // so the long side of the display can sit across the hand.
 constexpr int PIN_DISPLAY_RST = 8;
-constexpr int PIN_DISPLAY_DC = 9;
-constexpr int PIN_DISPLAY_CS = 10;
+constexpr int PIN_DISPLAY_DC = 10;
+constexpr int PIN_DISPLAY_CS = 9;
 constexpr int PIN_DISPLAY_CS_ALT = 7;  // Schematic has a second CS label; reserved.
 constexpr int PIN_DISPLAY_MOSI = 11;
 constexpr int PIN_DISPLAY_SCLK = 12;
@@ -20,7 +20,7 @@ constexpr int SCREEN_ROTATION = 1;
 // Physical buttons. The schematic drives these from a 3V3 ladder, so they are
 // treated as active-high with internal pulldowns.
 constexpr int PIN_BUTTON_LEFT = 6;
-constexpr int PIN_BUTTON_MIDDLE = 42;
+constexpr int PIN_BUTTON_MIDDLE = 41;
 constexpr int PIN_BUTTON_RIGHT = 5;
 constexpr int PIN_BUTTON_PREV = PIN_BUTTON_LEFT;
 constexpr int PIN_BUTTON_SELECT = PIN_BUTTON_MIDDLE;
