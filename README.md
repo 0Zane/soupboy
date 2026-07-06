@@ -4,7 +4,6 @@
 
 <p>
   <img src="case.png" width="300" alt="SoupBoy Device">
-  <img src="./Pictures/ .png" width="300" alt="SoupBoy Display">
 </p>
 
 ### ✨ _A pipboy-like watch that's gonna be the handiest gadget when you start falling out._ ✨
