@@ -1,187 +1,145 @@
-<div algin="center">
-
-# soupboy
-
-<p>
-
-<img src="./Pictures/ .png">
-<img src="./Pictures/ .png">
-
-</p>
-
-### _A pipboy-like watch thats gonna be the handiest watch when you start falling out._
-
-</div>
-
----
-
-# Overview
-
-**soupboy**
-
-The world is falling out and even though everyone is panicking we are creating the project that gonna save the survivors in this souptastic world.
-
-Introducing ***SOUP BOY***!!! Have your essential gadgets and information for everything thats happening around you in real-time and survive the chaos between the falling out survivors.
-
-This project is created by Hardware Pirates who are destined to steal your *golden koi* when the world *ENDSSS......*
-
----
-
-# Zine
-
 <div align="center">
 
-<img src="./Pictures/ X.png">
+# 🍜 SoupBoy
+
+<p>
+  <img src="case.png" width="300" alt="SoupBoy Device">
+</p>
+
+### ✨ _A pipboy-like watch that's gonna be the handiest gadget when you start falling out._ ✨
 
 </div>
 
 ---
 
-# BOM
+## 🧭 Overview
 
-| Designator | Function | Value/Part | Package | Qty | Price (USD) | Link |
-|---|---|---|---|---|---|---|
+The world is falling out, and while everyone else is panicking, we're building the **ultimate survival companion** for the souptastic wasteland.
 
+Introducing ***SOUP BOY*** — your wrist-mounted companion for navigating the chaos of the post-fallout world. Real-time GPS, WiFi scanning, IR copying, and a cozy retro UI that'll keep you sane when everything else is falling apart.
 
-*Notice: These are just recommendations that we have found to be secure and hopefully the cheapest possible option.*
+> _"When the world ENDSSS, at least you'll have SoupBoy."_
 
----
-
-# Features
-
-In the period of time where the world is ending you will need this features for survival.
-
-- **GPS Allocation** - Have access to your location anywhere
-- **RF Safe Mode** - Diagnostic nRF status pages with nRF transmit actions disabled
-- **Passive WiFi Scan** - Lists nearby networks for demo/status use only
-- **WiFi Names** - RF-tab demo that advertises rotating funny SSID names with no deauth or client targeting
-- **IR Tool** - Placeholder read/copy workflow for the IR module before final pins are soldered
-- **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
-- **SoupBoy UI** - Wrist-rotated boot animation, tab navigation, avatar, tools, device, and RF screens
+Built with ❤️ by the **Hardware Pirates** — destined to steal your *golden koi* when civilization crumbles.
 
 ---
 
-# Hardware Stack
+## 📖 Zine
+
+<div align="center">
+  <img src="./Pictures/ X.png" width="600" alt="SoupBoy Zine Cover">
+  <br>
+  <em>Check out our full zine in the repo!</em>
+</div>
+
+
+
+## 🌟 Features
+
+When the world is ending, you need these features to survive:
+
+| Feature | Description |
+|---------|-------------|
+| 🗺️ **GPS Location** | Know exactly where you are when everything else is lost |
+| 📡 **RF Safe Mode** | Diagnostic nRF status with TX disabled (safety first!) |
+| 📶 **Passive WiFi Scan** | See nearby networks for intel gathering |
+| 🍕 **WiFi Names** | Broadcast funny SSIDs to confuse the wastelanders |
+| 🔦 **IR Tool** | Copy remote codes (receive-only for now) |
+| 🔋 **Long Battery Life** | 3200mAh of wasteland endurance |
+| 🎨 **SoupBoy UI** | Cozy retro UI with wrist-rotated display, avatar, and tabs |
+
+---
+
+## 🔧 Hardware Stack
 
 | Subsystem | Component | Description |
-|---|---|---|
-| MCU | ESP32-S3-DevKitC1 | 16MB Flash, 8 MB PSRAM, Xtensa LX7 dual-core |
-| RF Header | nRF24L01 module | Safe diagnostics/status placeholder; TX disabled in firmware |
-| GPS | GPS Neo-6M | UART Interface for navigation |
-| Display | 128x160 OLED 1.8" | SPI Interface |
-| Battery | Li-Ion battery pack 2S1P 3200mAh |
-| 5V Rail | LM2597 Buck Converter | Boost converter for supplying the MCU |
-| IR Module | TBD | Placeholder read/copy tool until OUT/VCC/GND are soldered |
+|-----------|-----------|-------------|
+| **🧠 MCU** | ESP32-S3-DevKitC-1 | 16MB Flash, 8MB PSRAM, Xtensa LX7 dual-core |
+| **📡 RF** | nRF24L01+ | 2.4GHz radio — TX disabled in firmware |
+| **🗺️ GPS** | NEO-6M | UART navigation for finding your way |
+| **🖥️ Display** | 128x160 OLED 1.8" | SPI interface, wrist-rotated |
+| **🔋 Power** | 2S1P 3200mAh Li-Ion | Long-lasting wasteland endurance |
+| **⚡ 5V Rail** | LM2597 Buck Converter | Stable power for the MCU |
+| **🔦 IR** | 3-pin IR Receiver | Remote code copying (receive-only) |
 
 ---
 
-# Hardware Design
+## 🛠️ Hardware Design
 
-## Schematic
+### Schematic
 
-***Refer to the PDF file for better overview [PDF](Pictures/Schematic_Print.pdf)***
+📄 *For a detailed overview, check the [PDF](schematic.pdf)*
 
-<img src="./Pictures/MCU_Sch.png" width="100%"> <br>
+<img src="./Pictures/MCU_Sch.png" width="100%" alt="MCU Schematic">
 
 ---
 
-# Firmware
+## 💾 Firmware
 
-The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It currently builds a polished hackathon prototype UI:
+The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It builds a polished hackathon-prototype UI with:
 
-- Boot sequence with SoupBoy OS branding
-- Wrist layout with the display rotated to a 160x128 view
-- Top navigation tabs for Tools, Device, and RF
-- Navbar-first navigation: left/right changes tabs, select enters the tab submenu, and holding select returns to the navbar
-- Submenu navigation: left/right changes the selected feature button, and select activates that feature
-- Soup avatar bitmap generated from `soup-avatar.png`
-- Working pages for GPS, IR tool placeholder, battery, status, system info, avatar, about, RF diagnostics, WiFi scan, and WiFi Names under RF
-- Passive WiFi scanning, plus a selectable WiFi Names demo that advertises the built-in funny SSID list on common 2.4 GHz channels
-- nRF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
-- GPS and RF pages fail gracefully when modules are offline
+- 🚀 Boot animation with SoupBoy OS branding
+- 📱 Wrist-rotated 160x128 display layout
+- 🧭 Top navigation tabs: **TOOLS**, **DEVICE**, **RF**
+- 🎮 Navbar navigation: left/right switches tabs, select enters submenu
+- 🔄 Submenu navigation: left/right cycles features, select activates
+- 👤 Soup avatar generated from `soup-avatar.png`
+- 📍 Working pages for GPS, IR Tool, Battery, Status, System Info, Avatar, About
+- 📶 Passive WiFi scanning + funny SSID name broadcaster
+- 🔒 nRF transmit actions disabled (safe mode)
+- 🧪 GPS and RF pages fail gracefully when modules offline
 
-No temperature or weather-station features are implemented.
+> ⚡ No temperature or weather-station features are implemented (yet).
 
-## Pin Map
+---
 
-Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
+## 📍 Pin Map
+
+All pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 
 | Function | ESP32-S3 Pin |
-|---|---|
+|----------|--------------|
 | Display RST | GPIO8 |
 | Display CS | GPIO9 |
 | Display DC | GPIO10 |
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
 | Button Left | GPIO6 |
-| Button Middle / Select, hold Navbar | GPIO41 |
+| Button Middle / Select (hold = Navbar) | GPIO41 |
 | Button Right | GPIO5 |
-| Battery divider / INT label | GPIO2 |
+| Battery Divider | GPIO2 |
 | GPS RX | GPIO16 |
 | GPS TX | GPIO17 |
-| GPS PPS / shared label | GPIO13 |
-| IR OUT placeholder | GPIO35 |
-| IR VCC placeholder | GPIO36 |
-| IR GND placeholder | GPIO37 |
+| GPS PPS | GPIO13 |
+| IR OUT | GPIO35 |
+| IR VCC | GPIO36 |
+| IR GND | GPIO37 |
 | LED1 | GPIO15 |
 | LED2 | GPIO18 |
 | LED3 | GPIO21 |
 
-The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and nRF TX remains disabled.
+> ℹ️ nRF24L01+ CE/CSN/MISO pins are reserved/unknown, so TX remains disabled.
 
-Button input uses a 70 ms debounce window and a 220 ms repeat guard so one press does not generate multiple UI actions.
+**Button Input:** Uses a 70ms debounce window and a 220ms repeat guard to prevent accidental multiple presses.
 
-## Build and Upload
+---
 
-Arduino IDE:
+## 🏗️ Build & Upload
 
-1. Open [`firmware/firmware.ino`](firmware/firmware.ino).
-2. Select an ESP32-S3 DevKitC board.
-3. Install libraries:
-   - Adafruit GFX Library
-   - Adafruit ST7735 and ST7789 Library
-   - TinyGPSPlus
-4. Compile and upload.
+### Arduino IDE
 
-PlatformIO:
+1. Open [`firmware/firmware.ino`](firmware/firmware.ino)
+2. Select **ESP32-S3 DevKitC** board
+3. Install required libraries:
+   - `Adafruit GFX Library`
+   - `Adafruit ST7735 and ST7789 Library`
+   - `TinyGPSPlus`
+   - `IRremote` (for IR tool)
+   - `RF24` (for nRF24)
+4. Compile and upload 🚀
+
+### PlatformIO
 
 ```bash
 pio run
 pio run --target upload
-```
-
-If the display colors or offsets are wrong for a specific 1.8" module, adjust `INITR_BLACKTAB` or `SCREEN_ROTATION` in the firmware. The current firmware uses `SCREEN_ROTATION = 1` for the wrist-mounted landscape orientation; use `3` if the display is rotated the opposite way on the hand.
-
-```bash
-SOUP/
-|--- Firmware/
-|    |--- include/
-|         |--- battery.h
-|    |--- battery.cpp
-|--- Pictures/
-|--- LICENSE
-|--- README.md
-|--- Soup Boy Zine.pdf
-```
-
----
-
-# Creators 
-
-### Hardware Pirates: ...
-
----
-
-# License
-
-This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for full terms.
-
----
-
-<div align="center">
-
-## Soup Boy
-
-### Falling out, successfully.
-
-</div>
