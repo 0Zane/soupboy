@@ -8,8 +8,8 @@
 // 1.8" 128x160 SPI display. Rotation 1 turns the full UI for the wrist mount
 // so the long side of the display can sit across the hand.
 constexpr int PIN_DISPLAY_RST = 8;
-constexpr int PIN_DISPLAY_DC = 10;
 constexpr int PIN_DISPLAY_CS = 9;
+constexpr int PIN_DISPLAY_DC = 10;
 constexpr int PIN_DISPLAY_CS_ALT = 7;  // Schematic has a second CS label; reserved.
 constexpr int PIN_DISPLAY_MOSI = 11;
 constexpr int PIN_DISPLAY_SCLK = 12;
@@ -40,8 +40,12 @@ constexpr int PIN_GPS_TX = 17;
 constexpr int PIN_GPS_PPS = 13;
 constexpr uint32_t GPS_BAUD = 9600;
 
-// General signal/potentiometer/laser control net. Kept off by default.
-constexpr int PIN_SIGNAL_OUT = 14;
+// IR module placeholder wiring. Firmware only reads OUT for now; update these
+// after the module is soldered. Do not power the final module from GPIO unless
+// its current draw is confirmed safe.
+constexpr int PIN_IR_OUT = 35;
+constexpr int PIN_IR_VCC = 36;
+constexpr int PIN_IR_GND = 37;
 
 // Indicator LEDs.
 constexpr int PIN_LED1 = 15;

@@ -4,6 +4,7 @@
 
 void ledBegin();
 void ledSet(uint8_t index, bool state);
+void ledSignalFeature(uint8_t index);
 void ledHeartbeat();
 
 // Compatibility names from the first prototype.

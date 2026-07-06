@@ -8,6 +8,7 @@
 #include "assets/soup_avatar.h"
 #include "include/battery.h"
 #include "include/gps.h"
+#include "include/ir_tools.h"
 #include "include/led.h"
 #include "include/nrf.h"
 #include "include/pins.h"
@@ -25,16 +26,13 @@ constexpr uint16_t COL_PANEL_2 = rgb(14, 31, 19);
 constexpr uint16_t COL_GREEN = rgb(84, 255, 128);
 constexpr uint16_t COL_GREEN_DIM = rgb(44, 116, 62);
 constexpr uint16_t COL_AMBER = rgb(255, 188, 70);
-constexpr uint16_t COL_AMBER_DIM = rgb(132, 85, 34);
 constexpr uint16_t COL_RED = rgb(236, 78, 58);
 constexpr uint16_t COL_TEXT = rgb(235, 231, 196);
 constexpr uint16_t COL_DARK_TEXT = rgb(6, 12, 8);
 
 constexpr uint8_t kTabCount = 3;
 constexpr uint32_t kFrameMs = 145;
-constexpr uint32_t kWifiRefreshMs = 15000;
 constexpr int16_t kTabBarHeight = 22;
-constexpr int16_t kDetailHeaderHeight = 18;
 constexpr int16_t kFooterHeight = 14;
 
 Adafruit_ST7735 tft(PIN_DISPLAY_CS, PIN_DISPLAY_DC, PIN_DISPLAY_RST);
@@ -53,7 +51,7 @@ enum class Tab : uint8_t {
 enum class EntryKind : uint8_t {
   WifiScan,
   Gps,
-  Light,
+  IrTool,
   Avatar,
   Status,
   Battery,
@@ -70,13 +68,13 @@ struct MenuEntry {
 View view = View::Navbar;
 uint8_t tabIndex = static_cast<uint8_t>(Tab::Tools);
 uint8_t selectedByTab[kTabCount] = {0, 0, 0};
-EntryKind activeEntry = EntryKind::WifiScan;
+EntryKind activeEntry = EntryKind::Gps;
 uint8_t avatarLine = 0;
-uint8_t lightMode = 0;
 bool dirty = true;
 uint32_t lastFrameAt = 0;
 WiFiScanState lastWifiDrawState = WiFiScanState::Idle;
 int lastWifiDrawCount = -1;
+IRToolState lastIrDrawState = IRToolState::Idle;
 
 const char *const tabLabels[kTabCount] = {
   "TOOLS",
@@ -85,9 +83,8 @@ const char *const tabLabels[kTabCount] = {
 };
 
 const MenuEntry toolItems[] = {
-  {"WiFi Scan", EntryKind::WifiScan},
   {"GPS", EntryKind::Gps},
-  {"Light/Laser", EntryKind::Light},
+  {"IR Tool", EntryKind::IrTool},
 };
 
 const MenuEntry deviceItems[] = {
@@ -100,6 +97,7 @@ const MenuEntry deviceItems[] = {
 
 const MenuEntry rfItems[] = {
   {"RF Safe", EntryKind::RfSafe},
+  {"WiFi Scan", EntryKind::WifiScan},
 };
 
 const char *const avatarLines[] = {
@@ -204,11 +202,6 @@ void centerText(int16_t y, const String &text, uint16_t color, uint8_t size = 1)
   textAt((screenW() - width) / 2, y, text, color, size);
 }
 
-void rightText(int16_t y, const char *text, uint16_t color) {
-  const int16_t width = strlen(text) * 6;
-  textAt(screenW() - width - 6, y, text, color);
-}
-
 void drawScanlines() {
   for (int16_t y = 4; y < screenH(); y += 6) {
     tft.drawFastHLine(1, y, screenW() - 2, rgb(2, 17, 10));
@@ -256,26 +249,8 @@ void drawTabBar() {
   }
 }
 
-void drawDetailHeader(const char *title, const char *status) {
-  drawTabBar();
-  tft.fillRect(0, kTabBarHeight, screenW(), kDetailHeaderHeight, COL_PANEL_2);
-  tft.drawFastHLine(0, kTabBarHeight + kDetailHeaderHeight, screenW(), COL_GREEN_DIM);
-  textAt(7, kTabBarHeight + 6, title, COL_GREEN);
-  rightText(kTabBarHeight + 6, status, COL_AMBER);
-}
-
 void drawAvatarBitmap(int16_t x, int16_t y) {
   tft.drawRGBBitmap(x, y, SOUP_AVATAR_RGB565, SOUP_AVATAR_WIDTH, SOUP_AVATAR_HEIGHT);
-}
-
-void drawSteam(int16_t x, int16_t y) {
-  const uint8_t phase = (millis() / 220) % 4;
-  for (uint8_t i = 0; i < 3; ++i) {
-    const int16_t sx = x + 14 + i * 10;
-    const int16_t sy = y - 3 - ((phase + i) % 4);
-    tft.drawPixel(sx, sy, COL_AMBER_DIM);
-    tft.drawFastVLine(sx + 1, sy - 3, 3, COL_GREEN_DIM);
-  }
 }
 
 void transitionWipe() {
@@ -285,18 +260,14 @@ void transitionWipe() {
   }
 }
 
-void applyLightMode() {
-  digitalWrite(PIN_SIGNAL_OUT, lightMode == 3 ? HIGH : LOW);
-  ledSet(1, lightMode == 1);
-  ledSet(2, lightMode == 2);
-}
-
-void prepareEntry(EntryKind entry) {
-  if (entry == EntryKind::WifiScan &&
-      wifiScanState() != WiFiScanState::Scanning &&
-      (millis() - wifiLastScanMs() > kWifiRefreshMs || wifiLastScanMs() == 0)) {
-    wifiScanStart();
+uint8_t ledForEntry(EntryKind entry) {
+  if (entry == EntryKind::WifiScan || entry == EntryKind::RfSafe) {
+    return 0;
   }
+  if (entry == EntryKind::Gps || entry == EntryKind::IrTool) {
+    return 1;
+  }
+  return 2;
 }
 
 void enterSubmenu() {
@@ -328,13 +299,12 @@ void moveTab(int8_t delta) {
 }
 
 void activateEntry() {
-  prepareEntry(activeEntry);
+  ledSignalFeature(ledForEntry(activeEntry));
 
   if (activeEntry == EntryKind::WifiScan) {
     wifiScanStart();
-  } else if (activeEntry == EntryKind::Light) {
-    lightMode = (lightMode + 1) % 4;
-    applyLightMode();
+  } else if (activeEntry == EntryKind::IrTool) {
+    irToolActivate();
   } else if (activeEntry == EntryKind::Avatar) {
     avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
   } else if (activeEntry == EntryKind::Gps) {
@@ -455,22 +425,12 @@ void drawSubmenuContent() {
       textAt(8, y0 + 28, String("Lon ") + String(getLongitude(), 4), COL_TEXT);
       textAt(8, y0 + 42, String("Sat ") + String(getSatellites()), COL_TEXT);
     }
-  } else if (entry == EntryKind::Light) {
-    const char *modeText = "standby";
-    if (lightMode == 1) {
-      modeText = "beacon A";
-    } else if (lightMode == 2) {
-      modeText = "beacon B";
-    } else if (lightMode == 3) {
-      modeText = "laser on";
-    }
-    textAt(8, y0, "Select cycles output", COL_GREEN);
-    textAt(8, y0 + 16, String("Mode: ") + modeText, COL_TEXT);
-    textAt(8, y0 + 32, lightMode == 3 ? "GPIO14: HIGH" : "GPIO14: LOW", lightMode == 3 ? COL_RED : COL_AMBER);
-    tft.drawCircle(134, y0 + 27, 13, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
-    if (lightMode != 0) {
-      tft.fillCircle(134, y0 + 27, 7, lightMode == 3 ? COL_RED : COL_AMBER_DIM);
-    }
+  } else if (entry == EntryKind::IrTool) {
+    textAt(8, y0, "IR read/copy tool", COL_GREEN);
+    textAt(8, y0 + 15, String("State: ") + irToolStateText(), COL_TEXT);
+    textAt(8, y0 + 30, irToolHasCapture() ? "Stored: yes" : "Stored: no", irToolHasCapture() ? COL_AMBER : COL_GREEN_DIM);
+    textAt(8, y0 + 45, String("OUT GPIO") + String(PIN_IR_OUT), COL_GREEN_DIM);
+    textAt(94, y0 + 45, String("V") + String(PIN_IR_VCC) + " G" + String(PIN_IR_GND), COL_GREEN_DIM);
   } else if (entry == EntryKind::Avatar) {
     drawAvatarBitmap(10, y0 - 2);
     textAt(67, y0 + 3, clipped(String(avatarLines[avatarLine]), 14), COL_TEXT);
@@ -515,212 +475,6 @@ void drawSubmenu() {
   drawSubmenuSelector();
   drawSubmenuContent();
   drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawAvatar() {
-  clearScreen();
-  drawDetailHeader("AVATAR", "COZY");
-
-  const int16_t avatarX = 11;
-  const int16_t avatarY = kTabBarHeight + kDetailHeaderHeight + 8 + ((millis() / 360) % 3);
-  drawSteam(avatarX, avatarY);
-  drawAvatarBitmap(avatarX, avatarY);
-
-  if ((millis() / 180) % 22 == 0) {
-    tft.drawFastHLine(avatarX + 16, avatarY + 21, 6, rgb(130, 88, 84));
-    tft.drawFastHLine(avatarX + 34, avatarY + 21, 6, rgb(130, 88, 84));
-  }
-
-  tft.fillRoundRect(66, 49, 86, 48, 3, COL_PANEL_2);
-  tft.drawRoundRect(66, 49, 86, 48, 3, COL_GREEN_DIM);
-  textAt(71, 58, clipped(String(avatarLines[avatarLine]), 13), COL_TEXT);
-  textAt(71, 72, "tiny soup", COL_GREEN_DIM);
-  textAt(71, 84, "guardian", COL_GREEN_DIM);
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawRfSafe() {
-  clearScreen();
-  drawDetailHeader("RF SAFE", "LOCK");
-
-  const NrfStatus rf = nrfStatus();
-  textAt(8, 46, "TX: disabled", COL_GREEN);
-  textAt(8, 59, "Monitor: standby", COL_TEXT);
-  textAt(8, 72, rf.moduleDetected ? "Module: detected" : "Module: offline", COL_TEXT);
-  textAt(8, 85, clipped(String(rf.message), 16), COL_GREEN_DIM);
-
-  const uint8_t phase = (millis() / 140) % 6;
-  for (uint8_t i = 0; i < 6; ++i) {
-    const int16_t h = 5 + ((i + phase) % 6) * 4;
-    tft.drawRect(119 + i * 6, 105 - h, 4, h, COL_GREEN_DIM);
-    tft.fillRect(120 + i * 6, 104 - h, 2, h - 1, i < 3 ? COL_GREEN : COL_AMBER);
-  }
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawWifiScan() {
-  clearScreen();
-  drawDetailHeader("WIFI SCAN", "PASSIVE");
-
-  textAt(8, 45, "Scan only. No TX.", COL_AMBER);
-
-  const WiFiScanState state = wifiScanState();
-  if (state == WiFiScanState::Idle) {
-    textAt(8, 58, "State: idle", COL_TEXT);
-  } else if (state == WiFiScanState::Scanning) {
-    textAt(8, 58, "State: scanning", COL_GREEN);
-  } else if (state == WiFiScanState::Failed) {
-    textAt(8, 58, "State: failed", COL_RED);
-  } else {
-    textAt(8, 58, "Networks:", COL_GREEN);
-  }
-
-  if (state == WiFiScanState::Complete) {
-    const int count = wifiScanCount() < 4 ? wifiScanCount() : 4;
-    for (int i = 0; i < count; ++i) {
-      const int16_t y = 72 + i * 11;
-      String ssid = clipped(wifiSSID(i), 13);
-      if (ssid.length() == 0) {
-        ssid = "<hidden>";
-      }
-      textAt(8, y, ssid, COL_TEXT);
-      textAt(100, y, String(wifiRSSI(i)) + "dB", COL_GREEN_DIM);
-    }
-    if (wifiScanCount() == 0) {
-      textAt(8, 74, "No networks found", COL_TEXT);
-    }
-  } else if (state == WiFiScanState::Scanning) {
-    const uint8_t phase = (millis() / 120) % 9;
-    for (uint8_t i = 0; i < 9; ++i) {
-      tft.drawFastVLine(32 + i * 10, 103 - ((i + phase) % 5) * 4, 12, COL_GREEN_DIM);
-    }
-  }
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawGpsTool() {
-  clearScreen();
-  drawDetailHeader("GPS", "NAV");
-
-  if (gpsCharsProcessed() == 0) {
-    textAt(8, 49, "Module: offline", COL_AMBER);
-    textAt(8, 64, "Waiting for NMEA", COL_TEXT);
-  } else if (!isGPSValid()) {
-    textAt(8, 49, "Fix: awaiting lock", COL_AMBER);
-    textAt(8, 64, String("Satellites: ") + String(getSatellites()), COL_TEXT);
-    textAt(8, 79, String("HDOP: ") + String(getHDOP(), 1), COL_TEXT);
-  } else {
-    textAt(8, 48, "Fix: valid", COL_GREEN);
-    textAt(8, 61, String("Lat ") + String(getLatitude(), 4), COL_TEXT);
-    textAt(8, 74, String("Lon ") + String(getLongitude(), 4), COL_TEXT);
-    textAt(8, 87, String("Sat ") + String(getSatellites()), COL_TEXT);
-    textAt(8, 100, String("Spd ") + String(getSpeed(), 1) + "km/h", COL_TEXT);
-  }
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawLightTool() {
-  clearScreen();
-  drawDetailHeader("LIGHT", "LOCK");
-
-  const char *modeText = "standby";
-  if (lightMode == 1) {
-    modeText = "beacon A";
-  } else if (lightMode == 2) {
-    modeText = "beacon B";
-  } else if (lightMode == 3) {
-    modeText = "laser on";
-  }
-
-  textAt(8, 49, "LED beacon:", COL_GREEN);
-  textAt(78, 49, modeText, COL_TEXT);
-  textAt(8, 66, lightMode == 3 ? "Laser: active" : "Laser: standby", lightMode == 3 ? COL_RED : COL_AMBER);
-  textAt(8, 82, lightMode == 3 ? "SIG GPIO14: HIGH" : "SIG GPIO14: LOW", COL_TEXT);
-
-  tft.drawCircle(132, 88, 14, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
-  if (lightMode != 0) {
-    tft.fillCircle(132, 88, 8, COL_AMBER_DIM);
-  }
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawBatteryTool() {
-  clearScreen();
-  drawDetailHeader("BATTERY", "PWR");
-
-  const float volts = batteryVoltage();
-  const int pct = batteryPercent();
-
-  textAt(8, 47, "Sense pin: GPIO2", COL_GREEN_DIM);
-  textAt(8, 61, String("Voltage: ") + String(volts, 2) + "V", COL_TEXT);
-  textAt(8, 75, pct >= 0 ? String("Charge: ") + String(pct) + "% est" : String("Charge: offline"), COL_TEXT);
-  textAt(8, 89, String("Status: ") + String(batteryStatusText()), COL_AMBER);
-
-  const int barWidth = pct >= 0 ? map(pct, 0, 100, 0, 60) : 0;
-  tft.drawRect(91, 101, 64, 12, COL_GREEN_DIM);
-  tft.fillRect(93, 103, barWidth, 8, pct < 20 ? COL_RED : COL_GREEN);
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawSystemTool() {
-  clearScreen();
-  drawDetailHeader("SYSTEM", "INFO");
-
-  textAt(8, 46, SOUPBOY_BUILD_NAME, COL_AMBER);
-  textAt(8, 60, "MCU: ESP32-S3", COL_TEXT);
-  textAt(8, 73, String("Display: ") + String(screenW()) + "x" + String(screenH()), COL_TEXT);
-  textAt(8, 86, "Driver: ST7735", COL_TEXT);
-  textAt(8, 99, String("Uptime: ") + uptimeString(), COL_TEXT);
-  textAt(108, 86, "RF TX", COL_GREEN_DIM);
-  textAt(108, 99, "OFF", COL_GREEN);
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawStatus() {
-  clearScreen();
-  drawDetailHeader("STATUS", "ONLINE");
-
-  const NrfStatus rf = nrfStatus();
-  textAt(8, 46, String("Uptime: ") + uptimeString(), COL_TEXT);
-  textAt(8, 59, String("Battery: ") + String(batteryStatusText()), COL_TEXT);
-  textAt(8, 72, String("GPS: ") + String(isGPSValid() ? "fix" : "standby"), COL_TEXT);
-  textAt(8, 85, String("RF: ") + String(rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
-  textAt(8, 98, "WiFi: passive scan", COL_TEXT);
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawAbout() {
-  clearScreen();
-  drawDetailHeader("ABOUT", "HP");
-
-  centerText(49, "SOUPBOY", COL_AMBER, 2);
-  centerText(74, "Hardware Pirates", COL_GREEN);
-  centerText(88, "Fallout Hackathon", COL_TEXT);
-  centerText(102, "Stay warm. Stay soupy.", COL_TEXT);
-
-  drawFooter("L/R ITEM SEL RUN HOLD NAV");
-}
-
-void drawDetail() {
-  switch (activeEntry) {
-    case EntryKind::WifiScan: drawWifiScan(); break;
-    case EntryKind::Gps: drawGpsTool(); break;
-    case EntryKind::Light: drawLightTool(); break;
-    case EntryKind::Avatar: drawAvatar(); break;
-    case EntryKind::Status: drawStatus(); break;
-    case EntryKind::Battery: drawBatteryTool(); break;
-    case EntryKind::SystemInfo: drawSystemTool(); break;
-    case EntryKind::About: drawAbout(); break;
-    case EntryKind::RfSafe: drawRfSafe(); break;
-  }
 }
 
 bool isAnimated() {
@@ -770,6 +524,10 @@ void screenUpdate(InputEvent event) {
       (wifiScanState() != lastWifiDrawState || wifiScanCount() != lastWifiDrawCount)) {
     dirty = true;
   }
+  if (view == View::Submenu && activeEntry == EntryKind::IrTool &&
+      irToolState() != lastIrDrawState) {
+    dirty = true;
+  }
   handleEvent(event);
 
   const uint32_t now = millis();
@@ -788,6 +546,7 @@ void screenUpdate(InputEvent event) {
 
   lastWifiDrawState = wifiScanState();
   lastWifiDrawCount = wifiScanCount();
+  lastIrDrawState = irToolState();
 }
 
 const char *screenBuildName() {

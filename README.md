@@ -54,7 +54,7 @@ In the period of time where the world is ending you will need this features for 
 - **GPS Allocation** - Have access to your location anywhere
 - **RF Safe Mode** - Diagnostic RF status pages with transmit actions disabled
 - **Passive WiFi Scan** - Lists nearby networks for demo/status use only
-- **Laser Module** - Have a decoy that will confuse other survivors of what is happening for when your laser shines.
+- **IR Tool** - Placeholder read/copy workflow for the IR module before final pins are soldered
 - **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
 - **SoupBoy UI** - Wrist-rotated boot animation, tab navigation, avatar, tools, device, and RF screens
 
@@ -70,7 +70,7 @@ In the period of time where the world is ending you will need this features for 
 | Display | 128x160 OLED 1.8" | SPI Interface |
 | Battery | Li-Ion battery pack 2S1P 3200mAh |
 | 5V Rail | LM2597 Buck Converter | Boost converter for supplying the MCU |
-| Laser | ... | Built-in potentiometer for turning on a laser |
+| IR Module | TBD | Placeholder read/copy tool until OUT/VCC/GND are soldered |
 
 ---
 
@@ -94,7 +94,7 @@ The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It
 - Navbar-first navigation: left/right changes tabs, select enters the tab submenu, and holding select returns to the navbar
 - Submenu navigation: left/right changes the selected feature button, and select activates that feature
 - Soup avatar bitmap generated from `soup-avatar.png`
-- Working pages for WiFi scan, GPS, light/laser, battery, status, system info, avatar, about, and RF diagnostics
+- Working pages for GPS, IR tool placeholder, battery, status, system info, avatar, about, RF diagnostics, and WiFi scan under RF
 - Passive WiFi scanning only
 - RF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
 - GPS and RF pages fail gracefully when modules are offline
@@ -108,18 +108,20 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 | Function | ESP32-S3 Pin |
 |---|---|
 | Display RST | GPIO8 |
-| Display DC | GPIO9 |
-| Display CS | GPIO10 |
+| Display CS | GPIO9 |
+| Display DC | GPIO10 |
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
 | Button Left | GPIO6 |
-| Button Middle / Select, hold Navbar | GPIO42 |
+| Button Middle / Select, hold Navbar | GPIO41 |
 | Button Right | GPIO5 |
 | Battery divider / INT label | GPIO2 |
 | GPS RX | GPIO16 |
 | GPS TX | GPIO17 |
 | GPS PPS / shared label | GPIO13 |
-| Signal / laser control | GPIO14, off by default; Light/Laser feature can drive HIGH |
+| IR OUT placeholder | GPIO35 |
+| IR VCC placeholder | GPIO36 |
+| IR GND placeholder | GPIO37 |
 | LED1 | GPIO15 |
 | LED2 | GPIO18 |
 | LED3 | GPIO21 |

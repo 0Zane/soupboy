@@ -5,11 +5,24 @@
 namespace {
 
 constexpr int ledPins[] = {PIN_LED1, PIN_LED2, PIN_LED3};
-uint32_t lastHeartbeatAt = 0;
-bool heartbeatState = false;
+constexpr uint32_t kFeatureLedMs = 900;
+uint32_t featureLedUntil = 0;
+bool featureLedActive = false;
 
 bool validLed(uint8_t index) {
   return index < (sizeof(ledPins) / sizeof(ledPins[0])) && ledPins[index] >= 0;
+}
+
+void writeLed(uint8_t index, bool state) {
+  if (validLed(index)) {
+    digitalWrite(ledPins[index], state ? HIGH : LOW);
+  }
+}
+
+void clearLeds() {
+  for (uint8_t i = 0; i < sizeof(ledPins) / sizeof(ledPins[0]); ++i) {
+    writeLed(i, false);
+  }
 }
 
 }  // namespace
@@ -24,20 +37,25 @@ void ledBegin() {
 }
 
 void ledSet(uint8_t index, bool state) {
-  if (validLed(index)) {
-    digitalWrite(ledPins[index], state ? HIGH : LOW);
-  }
+  writeLed(index, state);
+}
+
+void ledSignalFeature(uint8_t index) {
+  clearLeds();
+  ledSet(index, true);
+  featureLedActive = true;
+  featureLedUntil = millis() + kFeatureLedMs;
 }
 
 void ledHeartbeat() {
-  const uint32_t now = millis();
-  if (now - lastHeartbeatAt < 900) {
+  if (!featureLedActive) {
     return;
   }
 
-  lastHeartbeatAt = now;
-  heartbeatState = !heartbeatState;
-  ledSet(0, heartbeatState);
+  if (static_cast<int32_t>(millis() - featureLedUntil) >= 0) {
+    clearLeds();
+    featureLedActive = false;
+  }
 }
 
 void updateyellow(bool state) {

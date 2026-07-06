@@ -3,6 +3,7 @@
 #include "include/battery.h"
 #include "include/gps.h"
 #include "include/input.h"
+#include "include/ir_tools.h"
 #include "include/led.h"
 #include "include/nrf.h"
 #include "include/pins.h"
@@ -13,10 +14,8 @@ void setup() {
   Serial.begin(115200);
   delay(50);
 
-  pinMode(PIN_SIGNAL_OUT, OUTPUT);
-  digitalWrite(PIN_SIGNAL_OUT, LOW);
-
   inputBegin();
+  irToolsBegin();
   ledBegin();
   batteryBegin();
   gpsBegin();
@@ -32,6 +31,7 @@ void setup() {
 
 void loop() {
   updateGPS();
+  irToolUpdate();
   wifiScanUpdate();
   ledHeartbeat();
 
