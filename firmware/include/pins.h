@@ -64,3 +64,10 @@ constexpr int PIN_NRF_IRQ = -1;
 // Compatibility aliases for older sketch code and common GPS examples.
 #define RXD2 PIN_GPS_RX
 #define TXD2 PIN_GPS_TX
+
+// nRF24L01+ pins
+#define PIN_NRF_CE   16
+#define PIN_NRF_CSN  15
+#define PIN_NRF_SCK  14
+#define PIN_NRF_MOSI 13
+#define PIN_NRF_MISO 12

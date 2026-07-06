@@ -60,6 +60,7 @@ enum class EntryKind : uint8_t {
   SystemInfo,
   About,
   RfSafe,
+  NrfJammer,
 };
 
 struct MenuEntry {
@@ -103,6 +104,7 @@ const MenuEntry rfItems[] = {
   {"RF Safe", EntryKind::RfSafe},
   {"WiFi Scan", EntryKind::WifiScan},
   {"WiFi Names", EntryKind::WifiNames},
+  {"nRF Jammer", EntryKind::NrfJammer},
 };
 
 const char *const avatarLines[] = {
@@ -266,7 +268,7 @@ void transitionWipe() {
 }
 
 uint8_t ledForEntry(EntryKind entry) {
-  if (entry == EntryKind::WifiScan || entry == EntryKind::WifiNames || entry == EntryKind::RfSafe) {
+  if (entry == EntryKind::WifiScan || entry == EntryKind::WifiNames || entry == EntryKind::RfSafe || entry == EntryKind::NrfJammer) {
     return 0;
   }
   if (entry == EntryKind::Gps || entry == EntryKind::IrTool) {

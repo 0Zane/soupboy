@@ -34,6 +34,7 @@ void loop() {
   irToolUpdate();
   wifiScanUpdate();
   wifiNameUpdate();
+  nrfJammerUpdate(); 
   ledHeartbeat();
 
   const InputEvent event = inputUpdate();
