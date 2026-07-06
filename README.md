@@ -68,7 +68,7 @@ When the world is ending, you need these features to survive:
 
 ### Schematic
 
-📄 *For a detailed overview, check the [PDF](Pictures/Schematic_Print.pdf)*
+📄 *For a detailed overview, check the [PDF](schematic.pdf)*
 
 <img src="./Pictures/MCU_Sch.png" width="100%" alt="MCU Schematic">
 
