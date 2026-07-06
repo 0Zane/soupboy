@@ -3,7 +3,7 @@
 # 🍜 SoupBoy
 
 <p>
-  <img src="./Pictures/ .png" width="300" alt="SoupBoy Device">
+  <img src="case.png" width="300" alt="SoupBoy Device">
   <img src="./Pictures/ .png" width="300" alt="SoupBoy Display">
 </p>
 
