@@ -52,10 +52,12 @@ This project is created by Hardware Pirates who are destined to steal your *gold
 In the period of time where the world is ending you will need this features for survival.
 
 - **GPS Allocation** - Have access to your location anywhere
-- **RF Jamming System** - Alter others connections ensuring dominance over the digital enemies around you
-- **Laser Module** - Have a decoy that will confuse other survivors of what is happening for when your laser shines.
+- **RF Safe Mode** - Diagnostic nRF status pages with nRF transmit actions disabled
+- **Passive WiFi Scan** - Lists nearby networks for demo/status use only
+- **WiFi Names** - RF-tab demo that advertises rotating funny SSID names with no deauth or client targeting
+- **IR Tool** - Placeholder read/copy workflow for the IR module before final pins are soldered
 - **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
-- **Weather Station** - Have an overview on what is the current state of the weather 
+- **SoupBoy UI** - Wrist-rotated boot animation, tab navigation, avatar, tools, device, and RF screens
 
 ---
 
@@ -64,13 +66,12 @@ In the period of time where the world is ending you will need this features for 
 | Subsystem | Component | Description |
 |---|---|---|
 | MCU | ESP32-S3-DevKitC1 | 16MB Flash, 8 MB PSRAM, Xtensa LX7 dual-core |
-| Sensors | ... | Access to weather information |
-| Signal Jammer | nRF24L01 module | Frequency emitter |
+| RF Header | nRF24L01 module | Safe diagnostics/status placeholder; TX disabled in firmware |
 | GPS | GPS Neo-6M | UART Interface for navigation |
 | Display | 128x160 OLED 1.8" | SPI Interface |
 | Battery | Li-Ion battery pack 2S1P 3200mAh |
 | 5V Rail | LM2597 Buck Converter | Boost converter for supplying the MCU |
-| Laser | ... | Built-in potentiometer for turning on a laser |
+| IR Module | TBD | Placeholder read/copy tool until OUT/VCC/GND are soldered |
 
 ---
 
@@ -84,10 +85,72 @@ In the period of time where the world is ending you will need this features for 
 
 ---
 
-#Firmware
+# Firmware
 
-Firmware features:
-- ...
+The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It currently builds a polished hackathon prototype UI:
+
+- Boot sequence with SoupBoy OS branding
+- Wrist layout with the display rotated to a 160x128 view
+- Top navigation tabs for Tools, Device, and RF
+- Navbar-first navigation: left/right changes tabs, select enters the tab submenu, and holding select returns to the navbar
+- Submenu navigation: left/right changes the selected feature button, and select activates that feature
+- Soup avatar bitmap generated from `soup-avatar.png`
+- Working pages for GPS, IR tool placeholder, battery, status, system info, avatar, about, RF diagnostics, WiFi scan, and WiFi Names under RF
+- Passive WiFi scanning, plus a selectable WiFi Names demo that advertises the built-in funny SSID list on common 2.4 GHz channels
+- nRF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
+- GPS and RF pages fail gracefully when modules are offline
+
+No temperature or weather-station features are implemented.
+
+## Pin Map
+
+Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
+
+| Function | ESP32-S3 Pin |
+|---|---|
+| Display RST | GPIO8 |
+| Display CS | GPIO9 |
+| Display DC | GPIO10 |
+| Display SDA/MOSI | GPIO11 |
+| Display SCL/SCK | GPIO12 |
+| Button Left | GPIO6 |
+| Button Middle / Select, hold Navbar | GPIO41 |
+| Button Right | GPIO5 |
+| Battery divider / INT label | GPIO2 |
+| GPS RX | GPIO16 |
+| GPS TX | GPIO17 |
+| GPS PPS / shared label | GPIO13 |
+| IR OUT placeholder | GPIO35 |
+| IR VCC placeholder | GPIO36 |
+| IR GND placeholder | GPIO37 |
+| LED1 | GPIO15 |
+| LED2 | GPIO18 |
+| LED3 | GPIO21 |
+
+The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and nRF TX remains disabled.
+
+Button input uses a 70 ms debounce window and a 220 ms repeat guard so one press does not generate multiple UI actions.
+
+## Build and Upload
+
+Arduino IDE:
+
+1. Open [`firmware/firmware.ino`](firmware/firmware.ino).
+2. Select an ESP32-S3 DevKitC board.
+3. Install libraries:
+   - Adafruit GFX Library
+   - Adafruit ST7735 and ST7789 Library
+   - TinyGPSPlus
+4. Compile and upload.
+
+PlatformIO:
+
+```bash
+pio run
+pio run --target upload
+```
+
+If the display colors or offsets are wrong for a specific 1.8" module, adjust `INITR_BLACKTAB` or `SCREEN_ROTATION` in the firmware. The current firmware uses `SCREEN_ROTATION = 1` for the wrist-mounted landscape orientation; use `3` if the display is rotated the opposite way on the hand.
 
 ```bash
 SOUP/

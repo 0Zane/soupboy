@@ -1,11 +1,16 @@
-#include "TinyGPSPlus.h"
+#pragma once
+
+#include <Arduino.h>
+#include <TinyGPS++.h>
+
 #include "pins.h"
 
-#define GPS_BAUD 9600
 extern TinyGPSPlus gps;
 extern HardwareSerial gpsSerial;
 
-// Update GPS dAta from serial
+void gpsBegin();
+
+// Update GPS data from serial.
 void updateGPS();
 
 // GPS data getters
@@ -17,3 +22,4 @@ double getLongitude();
 double getSpeed();
 double getAltitude();
 String getDateTime();
+uint32_t gpsCharsProcessed();
