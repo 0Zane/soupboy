@@ -56,7 +56,7 @@ In the period of time where the world is ending you will need this features for 
 - **Passive WiFi Scan** - Lists nearby networks for demo/status use only
 - **Laser Module** - Have a decoy that will confuse other survivors of what is happening for when your laser shines.
 - **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
-- **SoupBoy UI** - Boot animation, avatar, tools, status, and about screens
+- **SoupBoy UI** - Wrist-rotated boot animation, tab navigation, avatar, tools, device, and RF screens
 
 ---
 
@@ -89,7 +89,9 @@ In the period of time where the world is ending you will need this features for 
 The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It currently builds a polished hackathon prototype UI:
 
 - Boot sequence with SoupBoy OS branding
-- Main menu with avatar, tools, status, and about pages
+- Wrist layout with the display rotated to a 160x128 view
+- Top navigation tabs for Tools, Device, and RF
+- Three-button navigation with short press for up/down/select and long press for left/right/back
 - Soup avatar bitmap generated from `soup-avatar.png`
 - Safe tools pages for RF, BLE, GPS, light/laser, battery, WiFi, and system info
 - Passive WiFi scanning only
@@ -109,9 +111,9 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 | Display CS | GPIO10 |
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
-| Button BT1 / Select | GPIO6 |
-| Button BT2 / Previous | GPIO4 |
-| Button BT3 / Next | GPIO5 |
+| Button BT1 / Select, hold Back | GPIO6 |
+| Button BT2 / Previous, hold Left tab | GPIO4 |
+| Button BT3 / Next, hold Right tab | GPIO5 |
 | Battery divider / INT label | GPIO2 |
 | GPS RX | GPIO16 |
 | GPS TX | GPIO17 |
@@ -142,7 +144,7 @@ pio run
 pio run --target upload
 ```
 
-If the display colors or offsets are wrong for a specific 1.8" module, adjust `INITR_BLACKTAB` or `SCREEN_ROTATION` in the firmware.
+If the display colors or offsets are wrong for a specific 1.8" module, adjust `INITR_BLACKTAB` or `SCREEN_ROTATION` in the firmware. The current firmware uses `SCREEN_ROTATION = 1` for the wrist-mounted landscape orientation; use `3` if the display is rotated the opposite way on the hand.
 
 ```bash
 SOUP/

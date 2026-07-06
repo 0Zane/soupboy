@@ -3,6 +3,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
 #include <SPI.h>
+#include <string.h>
 
 #include "assets/soup_avatar.h"
 #include "include/battery.h"
@@ -29,55 +30,76 @@ constexpr uint16_t COL_RED = rgb(236, 78, 58);
 constexpr uint16_t COL_TEXT = rgb(235, 231, 196);
 constexpr uint16_t COL_DARK_TEXT = rgb(6, 12, 8);
 
-constexpr uint8_t kHomeCount = 4;
-constexpr uint8_t kToolCount = 7;
+constexpr uint8_t kTabCount = 3;
 constexpr uint32_t kFrameMs = 145;
 constexpr uint32_t kWifiRefreshMs = 15000;
+constexpr int16_t kTabBarHeight = 22;
+constexpr int16_t kDetailHeaderHeight = 18;
+constexpr int16_t kFooterHeight = 14;
 
 Adafruit_ST7735 tft(PIN_DISPLAY_CS, PIN_DISPLAY_DC, PIN_DISPLAY_RST);
 
-enum class Page : uint8_t {
-  Home,
-  Avatar,
-  Tools,
-  ToolDetail,
-  Status,
-  About,
+enum class View : uint8_t {
+  Menu,
+  Detail,
 };
 
-enum class ToolPage : uint8_t {
-  RfSafe,
+enum class Tab : uint8_t {
+  Tools,
+  Device,
+  Rf,
+};
+
+enum class EntryKind : uint8_t {
   WifiScan,
-  BleSafe,
   Gps,
   Light,
+  Avatar,
+  Status,
   Battery,
   SystemInfo,
+  About,
+  RfSafe,
+  BleSafe,
 };
 
-Page page = Page::Home;
-uint8_t homeIndex = 0;
-uint8_t toolIndex = 0;
+struct MenuEntry {
+  const char *label;
+  EntryKind kind;
+};
+
+View view = View::Menu;
+uint8_t tabIndex = static_cast<uint8_t>(Tab::Tools);
+uint8_t selectedByTab[kTabCount] = {0, 0, 0};
+EntryKind activeEntry = EntryKind::WifiScan;
 uint8_t avatarLine = 0;
 uint8_t lightMode = 0;
 bool dirty = true;
 uint32_t lastFrameAt = 0;
 
-const char *const homeItems[kHomeCount] = {
-  "Avatar",
-  "Tools",
-  "Status",
-  "About",
+const char *const tabLabels[kTabCount] = {
+  "TOOLS",
+  "DEVICE",
+  "RF",
 };
 
-const char *const toolItems[kToolCount] = {
-  "RF Tools",
-  "WiFi Scan",
-  "BLE Safe",
-  "GPS",
-  "Light/Laser",
-  "Battery",
-  "System Info",
+const MenuEntry toolItems[] = {
+  {"WiFi Scan", EntryKind::WifiScan},
+  {"GPS", EntryKind::Gps},
+  {"Light/Laser", EntryKind::Light},
+};
+
+const MenuEntry deviceItems[] = {
+  {"Avatar", EntryKind::Avatar},
+  {"Status", EntryKind::Status},
+  {"Battery", EntryKind::Battery},
+  {"System Info", EntryKind::SystemInfo},
+  {"About", EntryKind::About},
+};
+
+const MenuEntry rfItems[] = {
+  {"RF Safe", EntryKind::RfSafe},
+  {"BLE Safe", EntryKind::BleSafe},
 };
 
 const char *const avatarLines[] = {
@@ -87,20 +109,48 @@ const char *const avatarLines[] = {
   "Today: don't get cooked",
 };
 
-void clearScreen();
-void drawHome();
-void drawAvatar();
-void drawTools();
-void drawToolDetail();
-void drawStatus();
-void drawAbout();
-void drawRfSafe();
-void drawWifiScan();
-void drawBleSafe();
-void drawGpsTool();
-void drawLightTool();
-void drawBatteryTool();
-void drawSystemTool();
+int16_t screenW() {
+  return tft.width();
+}
+
+int16_t screenH() {
+  return tft.height();
+}
+
+int16_t footerTop() {
+  return screenH() - kFooterHeight;
+}
+
+Tab activeTab() {
+  return static_cast<Tab>(tabIndex);
+}
+
+const MenuEntry *entriesFor(Tab tab) {
+  switch (tab) {
+    case Tab::Tools: return toolItems;
+    case Tab::Device: return deviceItems;
+    case Tab::Rf: return rfItems;
+  }
+  return toolItems;
+}
+
+uint8_t entryCountFor(Tab tab) {
+  switch (tab) {
+    case Tab::Tools: return sizeof(toolItems) / sizeof(toolItems[0]);
+    case Tab::Device: return sizeof(deviceItems) / sizeof(deviceItems[0]);
+    case Tab::Rf: return sizeof(rfItems) / sizeof(rfItems[0]);
+  }
+  return 0;
+}
+
+uint8_t &selectedFor(Tab tab) {
+  return selectedByTab[static_cast<uint8_t>(tab)];
+}
+
+const MenuEntry &selectedEntry() {
+  const Tab tab = activeTab();
+  return entriesFor(tab)[selectedFor(tab)];
+}
 
 String uptimeString() {
   const uint32_t total = millis() / 1000;
@@ -114,8 +164,14 @@ String uptimeString() {
 }
 
 String clipped(String text, uint8_t maxLen) {
+  if (maxLen == 0) {
+    return String("");
+  }
   if (text.length() <= maxLen) {
     return text;
+  }
+  if (maxLen == 1) {
+    return String("~");
   }
   return text.substring(0, maxLen - 1) + "~";
 }
@@ -140,24 +196,32 @@ void textAt(int16_t x, int16_t y, const String &text, uint16_t color, uint8_t si
 
 void centerText(int16_t y, const char *text, uint16_t color, uint8_t size = 1) {
   const int16_t width = strlen(text) * 6 * size;
-  textAt((SCREEN_WIDTH - width) / 2, y, text, color, size);
+  textAt((screenW() - width) / 2, y, text, color, size);
+}
+
+void rightText(int16_t y, const char *text, uint16_t color) {
+  const int16_t width = strlen(text) * 6;
+  textAt(screenW() - width - 6, y, text, color);
 }
 
 void drawScanlines() {
-  for (int16_t y = 4; y < SCREEN_HEIGHT; y += 6) {
-    tft.drawFastHLine(1, y, SCREEN_WIDTH - 2, rgb(2, 17, 10));
+  for (int16_t y = 4; y < screenH(); y += 6) {
+    tft.drawFastHLine(1, y, screenW() - 2, rgb(2, 17, 10));
   }
 }
 
 void drawCornerBrackets(uint16_t color) {
+  const int16_t w = screenW();
+  const int16_t h = screenH();
+
   tft.drawFastHLine(0, 0, 14, color);
   tft.drawFastVLine(0, 0, 14, color);
-  tft.drawFastHLine(SCREEN_WIDTH - 14, 0, 14, color);
-  tft.drawFastVLine(SCREEN_WIDTH - 1, 0, 14, color);
-  tft.drawFastHLine(0, SCREEN_HEIGHT - 1, 14, color);
-  tft.drawFastVLine(0, SCREEN_HEIGHT - 14, 14, color);
-  tft.drawFastHLine(SCREEN_WIDTH - 14, SCREEN_HEIGHT - 1, 14, color);
-  tft.drawFastVLine(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 14, 14, color);
+  tft.drawFastHLine(w - 14, 0, 14, color);
+  tft.drawFastVLine(w - 1, 0, 14, color);
+  tft.drawFastHLine(0, h - 1, 14, color);
+  tft.drawFastVLine(0, h - 14, 14, color);
+  tft.drawFastHLine(w - 14, h - 1, 14, color);
+  tft.drawFastVLine(w - 1, h - 14, 14, color);
 }
 
 void clearScreen() {
@@ -166,154 +230,51 @@ void clearScreen() {
   drawCornerBrackets(COL_GREEN_DIM);
 }
 
-void drawHeader(const char *title, const char *status) {
-  tft.fillRect(0, 0, SCREEN_WIDTH, 22, COL_PANEL);
-  tft.drawFastHLine(0, 22, SCREEN_WIDTH, COL_GREEN_DIM);
-  textAt(5, 6, title, COL_GREEN);
-  const int16_t statusWidth = strlen(status) * 6;
-  textAt(SCREEN_WIDTH - statusWidth - 5, 6, status, COL_AMBER);
+void drawFooter(const char *text) {
+  tft.fillRect(0, footerTop(), screenW(), kFooterHeight, COL_PANEL);
+  tft.drawFastHLine(0, footerTop() - 1, screenW(), COL_GREEN_DIM);
+  centerText(footerTop() + 4, text, COL_GREEN_DIM);
 }
 
-void drawFooter(const char *text) {
-  tft.fillRect(0, 146, SCREEN_WIDTH, 14, COL_PANEL);
-  tft.drawFastHLine(0, 145, SCREEN_WIDTH, COL_GREEN_DIM);
-  centerText(149, text, COL_GREEN_DIM);
+void drawTabBar() {
+  const int16_t baseWidth = screenW() / kTabCount;
+
+  for (uint8_t i = 0; i < kTabCount; ++i) {
+    const int16_t x = i * baseWidth;
+    const int16_t w = (i == kTabCount - 1) ? screenW() - x : baseWidth;
+    const bool selected = i == tabIndex;
+
+    tft.fillRect(x, 0, w, kTabBarHeight, selected ? COL_AMBER : COL_PANEL);
+    tft.drawRect(x, 0, w, kTabBarHeight, selected ? COL_AMBER : COL_GREEN_DIM);
+    const int16_t labelWidth = strlen(tabLabels[i]) * 6;
+    textAt(x + (w - labelWidth) / 2, 7, tabLabels[i], selected ? COL_DARK_TEXT : COL_GREEN);
+  }
+}
+
+void drawDetailHeader(const char *title, const char *status) {
+  drawTabBar();
+  tft.fillRect(0, kTabBarHeight, screenW(), kDetailHeaderHeight, COL_PANEL_2);
+  tft.drawFastHLine(0, kTabBarHeight + kDetailHeaderHeight, screenW(), COL_GREEN_DIM);
+  textAt(7, kTabBarHeight + 6, title, COL_GREEN);
+  rightText(kTabBarHeight + 6, status, COL_AMBER);
 }
 
 void drawMenuRow(int16_t y, const char *label, bool selected) {
+  const int16_t rowX = 8;
+  const int16_t rowW = screenW() - 16;
+
   if (selected) {
-    tft.fillRoundRect(6, y - 2, 116, 15, 2, COL_AMBER);
-    textAt(12, y + 2, ">", COL_DARK_TEXT);
-    textAt(24, y + 2, label, COL_DARK_TEXT);
+    tft.fillRoundRect(rowX, y - 2, rowW, 15, 2, COL_AMBER);
+    textAt(rowX + 7, y + 2, ">", COL_DARK_TEXT);
+    textAt(rowX + 20, y + 2, clipped(String(label), (rowW - 26) / 6), COL_DARK_TEXT);
   } else {
-    tft.drawRoundRect(6, y - 2, 116, 15, 2, COL_GREEN_DIM);
-    textAt(24, y + 2, label, COL_TEXT);
-  }
-}
-
-void transitionWipe() {
-  for (int16_t x = 0; x < SCREEN_WIDTH; x += 12) {
-    tft.fillRect(x, 0, 6, SCREEN_HEIGHT, COL_GREEN_DIM);
-    delay(8);
-  }
-}
-
-void goTo(Page nextPage) {
-  if (page != nextPage) {
-    transitionWipe();
-  }
-  page = nextPage;
-  dirty = true;
-}
-
-void goToToolDetail() {
-  if (static_cast<ToolPage>(toolIndex) == ToolPage::WifiScan &&
-      wifiScanState() != WiFiScanState::Scanning &&
-      (millis() - wifiLastScanMs() > kWifiRefreshMs || wifiLastScanMs() == 0)) {
-    wifiScanStart();
-  }
-  goTo(Page::ToolDetail);
-}
-
-void applyLightMode() {
-  digitalWrite(PIN_SIGNAL_OUT, LOW);
-  ledSet(1, lightMode == 1);
-  ledSet(2, lightMode == 2);
-}
-
-void handleHome(InputEvent event) {
-  if (event == InputEvent::Previous) {
-    homeIndex = (homeIndex + kHomeCount - 1) % kHomeCount;
-    dirty = true;
-  } else if (event == InputEvent::Next) {
-    homeIndex = (homeIndex + 1) % kHomeCount;
-    dirty = true;
-  } else if (event == InputEvent::Select) {
-    switch (homeIndex) {
-      case 0: goTo(Page::Avatar); break;
-      case 1: goTo(Page::Tools); break;
-      case 2: goTo(Page::Status); break;
-      case 3: goTo(Page::About); break;
-    }
-  }
-}
-
-void handleTools(InputEvent event) {
-  if (event == InputEvent::Previous) {
-    toolIndex = (toolIndex + kToolCount - 1) % kToolCount;
-    dirty = true;
-  } else if (event == InputEvent::Next) {
-    toolIndex = (toolIndex + 1) % kToolCount;
-    dirty = true;
-  } else if (event == InputEvent::Select) {
-    goToToolDetail();
-  } else if (event == InputEvent::Back) {
-    goTo(Page::Home);
-  }
-}
-
-void handleToolDetail(InputEvent event) {
-  if (event == InputEvent::Back) {
-    goTo(Page::Tools);
-    return;
-  }
-
-  const ToolPage tool = static_cast<ToolPage>(toolIndex);
-  if (event == InputEvent::Select && tool == ToolPage::WifiScan) {
-    wifiScanStart();
-    dirty = true;
-  } else if (event == InputEvent::Select && tool == ToolPage::Light) {
-    lightMode = (lightMode + 1) % 3;
-    applyLightMode();
-    dirty = true;
-  } else if (event == InputEvent::Select) {
-    goTo(Page::Tools);
-  }
-}
-
-void handleEvent(InputEvent event) {
-  if (event == InputEvent::None) {
-    return;
-  }
-
-  if (page == Page::Home) {
-    handleHome(event);
-  } else if (page == Page::Tools) {
-    handleTools(event);
-  } else if (page == Page::ToolDetail) {
-    handleToolDetail(event);
-  } else if (page == Page::Avatar) {
-    if (event == InputEvent::Previous || event == InputEvent::Next) {
-      avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
-      dirty = true;
-    } else if (event == InputEvent::Select || event == InputEvent::Back) {
-      goTo(Page::Home);
-    }
-  } else if (event == InputEvent::Select || event == InputEvent::Back) {
-    goTo(Page::Home);
+    tft.drawRoundRect(rowX, y - 2, rowW, 15, 2, COL_GREEN_DIM);
+    textAt(rowX + 20, y + 2, clipped(String(label), (rowW - 26) / 6), COL_TEXT);
   }
 }
 
 void drawAvatarBitmap(int16_t x, int16_t y) {
   tft.drawRGBBitmap(x, y, SOUP_AVATAR_RGB565, SOUP_AVATAR_WIDTH, SOUP_AVATAR_HEIGHT);
-}
-
-void drawHome() {
-  clearScreen();
-  drawHeader("SOUPBOY", "READY");
-
-  const int16_t bob = (millis() / 420) % 2;
-  drawAvatarBitmap(76, 29 + bob);
-  textAt(8, 29, "SURVIVOR", COL_AMBER);
-  textAt(8, 40, "MODE", COL_AMBER);
-  tft.drawFastHLine(8, 54, 55, COL_GREEN_DIM);
-  textAt(8, 59, "Fallout kit", COL_GREEN_DIM);
-
-  for (uint8_t i = 0; i < kHomeCount; ++i) {
-    drawMenuRow(80 + i * 16, homeItems[i], i == homeIndex);
-  }
-
-  drawFooter("STAY WARM. STAY SOUPY.");
 }
 
 void drawSteam(int16_t x, int16_t y) {
@@ -326,56 +287,183 @@ void drawSteam(int16_t x, int16_t y) {
   }
 }
 
-void drawAvatar() {
-  clearScreen();
-  drawHeader("SOUP", "COZY");
-
-  const int16_t x = (SCREEN_WIDTH - SOUP_AVATAR_WIDTH) / 2;
-  const int16_t y = 31 + ((millis() / 360) % 3);
-  drawSteam(x, y);
-  drawAvatarBitmap(x, y);
-
-  if ((millis() / 180) % 22 == 0) {
-    tft.drawFastHLine(x + 16, y + 21, 6, rgb(130, 88, 84));
-    tft.drawFastHLine(x + 34, y + 21, 6, rgb(130, 88, 84));
+void transitionWipe() {
+  for (int16_t x = 0; x < screenW(); x += 14) {
+    tft.fillRect(x, 0, 7, screenH(), COL_GREEN_DIM);
+    delay(7);
   }
-
-  tft.fillRoundRect(8, 93, 112, 37, 3, COL_PANEL_2);
-  tft.drawRoundRect(8, 93, 112, 37, 3, COL_GREEN_DIM);
-  textAt(13, 101, avatarLines[avatarLine], COL_TEXT);
-  textAt(13, 115, "tiny soup guardian", COL_GREEN_DIM);
-
-  drawFooter("RADIATION: PROBABLY FINE");
 }
 
-void drawTools() {
-  clearScreen();
-  drawHeader("TOOLS", "SAFE");
+void applyLightMode() {
+  digitalWrite(PIN_SIGNAL_OUT, LOW);
+  ledSet(1, lightMode == 1);
+  ledSet(2, lightMode == 2);
+}
 
-  for (uint8_t i = 0; i < kToolCount; ++i) {
-    drawMenuRow(29 + i * 16, toolItems[i], i == toolIndex);
+void prepareEntry(EntryKind entry) {
+  if (entry == EntryKind::WifiScan &&
+      wifiScanState() != WiFiScanState::Scanning &&
+      (millis() - wifiLastScanMs() > kWifiRefreshMs || wifiLastScanMs() == 0)) {
+    wifiScanStart();
+  }
+}
+
+void openSelectedEntry() {
+  activeEntry = selectedEntry().kind;
+  prepareEntry(activeEntry);
+  transitionWipe();
+  view = View::Detail;
+  dirty = true;
+}
+
+void showMenu() {
+  if (view != View::Menu) {
+    transitionWipe();
+  }
+  view = View::Menu;
+  dirty = true;
+}
+
+void moveSelection(int8_t delta) {
+  const Tab tab = activeTab();
+  uint8_t &selected = selectedFor(tab);
+  const uint8_t count = entryCountFor(tab);
+  selected = (selected + count + delta) % count;
+  dirty = true;
+
+  if (view == View::Detail) {
+    activeEntry = selectedEntry().kind;
+    prepareEntry(activeEntry);
+  }
+}
+
+void moveTab(int8_t delta) {
+  tabIndex = (tabIndex + kTabCount + delta) % kTabCount;
+  if (view == View::Detail) {
+    activeEntry = selectedEntry().kind;
+    prepareEntry(activeEntry);
+  }
+  dirty = true;
+}
+
+void handleMenu(InputEvent event) {
+  if (event == InputEvent::Previous) {
+    moveSelection(-1);
+  } else if (event == InputEvent::Next) {
+    moveSelection(1);
+  } else if (event == InputEvent::Left) {
+    moveTab(-1);
+  } else if (event == InputEvent::Right) {
+    moveTab(1);
+  } else if (event == InputEvent::Select) {
+    openSelectedEntry();
+  }
+}
+
+void handleDetail(InputEvent event) {
+  if (event == InputEvent::Back) {
+    showMenu();
+    return;
   }
 
-  drawFooter("TX LOCKED BY DEFAULT");
+  if (event == InputEvent::Previous) {
+    if (activeEntry == EntryKind::Avatar) {
+      avatarLine = (avatarLine + (sizeof(avatarLines) / sizeof(avatarLines[0])) - 1) %
+                   (sizeof(avatarLines) / sizeof(avatarLines[0]));
+      dirty = true;
+    } else {
+      moveSelection(-1);
+    }
+  } else if (event == InputEvent::Next) {
+    if (activeEntry == EntryKind::Avatar) {
+      avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
+      dirty = true;
+    } else {
+      moveSelection(1);
+    }
+  } else if (event == InputEvent::Left) {
+    moveTab(-1);
+  } else if (event == InputEvent::Right) {
+    moveTab(1);
+  } else if (event == InputEvent::Select && activeEntry == EntryKind::WifiScan) {
+    wifiScanStart();
+    dirty = true;
+  } else if (event == InputEvent::Select && activeEntry == EntryKind::Light) {
+    lightMode = (lightMode + 1) % 3;
+    applyLightMode();
+    dirty = true;
+  } else if (event == InputEvent::Select && activeEntry == EntryKind::Avatar) {
+    avatarLine = (avatarLine + 1) % (sizeof(avatarLines) / sizeof(avatarLines[0]));
+    dirty = true;
+  }
+}
+
+void handleEvent(InputEvent event) {
+  if (event == InputEvent::None) {
+    return;
+  }
+
+  if (view == View::Menu) {
+    handleMenu(event);
+  } else {
+    handleDetail(event);
+  }
+}
+
+void drawMenu() {
+  clearScreen();
+  drawTabBar();
+
+  const Tab tab = activeTab();
+  const MenuEntry *items = entriesFor(tab);
+  const uint8_t count = entryCountFor(tab);
+  const uint8_t selected = selectedFor(tab);
+
+  for (uint8_t i = 0; i < count; ++i) {
+    drawMenuRow(30 + i * 17, items[i].label, i == selected);
+  }
+
+  drawFooter("UP/DN ITEM  HOLD L/R TAB");
+}
+
+void drawAvatar() {
+  clearScreen();
+  drawDetailHeader("AVATAR", "COZY");
+
+  const int16_t avatarX = 11;
+  const int16_t avatarY = kTabBarHeight + kDetailHeaderHeight + 8 + ((millis() / 360) % 3);
+  drawSteam(avatarX, avatarY);
+  drawAvatarBitmap(avatarX, avatarY);
+
+  if ((millis() / 180) % 22 == 0) {
+    tft.drawFastHLine(avatarX + 16, avatarY + 21, 6, rgb(130, 88, 84));
+    tft.drawFastHLine(avatarX + 34, avatarY + 21, 6, rgb(130, 88, 84));
+  }
+
+  tft.fillRoundRect(66, 49, 86, 48, 3, COL_PANEL_2);
+  tft.drawRoundRect(66, 49, 86, 48, 3, COL_GREEN_DIM);
+  textAt(71, 58, clipped(String(avatarLines[avatarLine]), 13), COL_TEXT);
+  textAt(71, 72, "tiny soup", COL_GREEN_DIM);
+  textAt(71, 84, "guardian", COL_GREEN_DIM);
+
+  drawFooter("NEXT LINE  HOLD SEL BACK");
 }
 
 void drawRfSafe() {
   clearScreen();
-  drawHeader("RF SAFE", "LOCK");
+  drawDetailHeader("RF SAFE", "LOCK");
 
   const NrfStatus rf = nrfStatus();
-  textAt(8, 31, "RF SAFE MODE", COL_AMBER);
   textAt(8, 46, "TX: disabled", COL_GREEN);
   textAt(8, 59, "Monitor: standby", COL_TEXT);
-  textAt(8, 72, "No transmit tools", COL_TEXT);
-  textAt(8, 85, rf.moduleDetected ? "Module: detected" : "Module: offline", COL_TEXT);
-  textAt(8, 98, rf.message, COL_GREEN_DIM);
+  textAt(8, 72, rf.moduleDetected ? "Module: detected" : "Module: offline", COL_TEXT);
+  textAt(8, 85, clipped(String(rf.message), 16), COL_GREEN_DIM);
 
   const uint8_t phase = (millis() / 140) % 6;
   for (uint8_t i = 0; i < 6; ++i) {
     const int16_t h = 5 + ((i + phase) % 6) * 4;
-    tft.drawRect(82 + i * 6, 122 - h, 4, h, COL_GREEN_DIM);
-    tft.fillRect(83 + i * 6, 121 - h, 2, h - 1, i < 3 ? COL_GREEN : COL_AMBER);
+    tft.drawRect(119 + i * 6, 105 - h, 4, h, COL_GREEN_DIM);
+    tft.fillRect(120 + i * 6, 104 - h, 2, h - 1, i < 3 ? COL_GREEN : COL_AMBER);
   }
 
   drawFooter(nrfSafeModeText());
@@ -383,85 +471,82 @@ void drawRfSafe() {
 
 void drawWifiScan() {
   clearScreen();
-  drawHeader("WIFI SCAN", "PASSIVE");
+  drawDetailHeader("WIFI SCAN", "PASSIVE");
 
-  textAt(8, 30, "Scan only. No TX tools.", COL_AMBER);
+  textAt(8, 45, "Scan only. No TX.", COL_AMBER);
 
   const WiFiScanState state = wifiScanState();
   if (state == WiFiScanState::Idle) {
-    textAt(8, 47, "State: idle", COL_TEXT);
+    textAt(8, 58, "State: idle", COL_TEXT);
   } else if (state == WiFiScanState::Scanning) {
-    textAt(8, 47, "State: scanning", COL_GREEN);
+    textAt(8, 58, "State: scanning", COL_GREEN);
   } else if (state == WiFiScanState::Failed) {
-    textAt(8, 47, "State: failed", COL_RED);
+    textAt(8, 58, "State: failed", COL_RED);
   } else {
-    textAt(8, 47, "Networks:", COL_GREEN);
+    textAt(8, 58, "Networks:", COL_GREEN);
   }
 
   if (state == WiFiScanState::Complete) {
-    const int count = wifiScanCount() < 5 ? wifiScanCount() : 5;
+    const int count = wifiScanCount() < 4 ? wifiScanCount() : 4;
     for (int i = 0; i < count; ++i) {
-      const int16_t y = 61 + i * 15;
-      String ssid = clipped(wifiSSID(i), 12);
+      const int16_t y = 72 + i * 11;
+      String ssid = clipped(wifiSSID(i), 13);
       if (ssid.length() == 0) {
         ssid = "<hidden>";
       }
       textAt(8, y, ssid, COL_TEXT);
-      textAt(82, y, String(wifiRSSI(i)) + "dB", COL_GREEN_DIM);
+      textAt(100, y, String(wifiRSSI(i)) + "dB", COL_GREEN_DIM);
     }
     if (wifiScanCount() == 0) {
-      textAt(8, 65, "No networks found", COL_TEXT);
+      textAt(8, 74, "No networks found", COL_TEXT);
     }
   } else if (state == WiFiScanState::Scanning) {
     const uint8_t phase = (millis() / 120) % 9;
     for (uint8_t i = 0; i < 9; ++i) {
-      tft.drawFastVLine(16 + i * 10, 111 - ((i + phase) % 5) * 4, 12, COL_GREEN_DIM);
+      tft.drawFastVLine(32 + i * 10, 103 - ((i + phase) % 5) * 4, 12, COL_GREEN_DIM);
     }
   }
 
-  drawFooter("SELECT RESCANS");
+  drawFooter("SEL RESCAN  HOLD SEL BACK");
 }
 
 void drawBleSafe() {
   clearScreen();
-  drawHeader("BLE SAFE", "LOCK");
+  drawDetailHeader("BLE SAFE", "LOCK");
 
-  textAt(8, 33, "BLE TX: disabled", COL_AMBER);
-  textAt(8, 50, "Passive BLE: offline", COL_TEXT);
-  textAt(8, 67, "Diagnostics only", COL_TEXT);
-  textAt(8, 84, "Demo placeholder only", COL_GREEN_DIM);
+  textAt(8, 48, "BLE TX: disabled", COL_AMBER);
+  textAt(8, 63, "Passive BLE: offline", COL_TEXT);
+  textAt(8, 78, "Diagnostics only", COL_TEXT);
+  textAt(8, 93, "Demo placeholder", COL_GREEN_DIM);
 
-  tft.drawRoundRect(22, 108, 84, 22, 4, COL_GREEN_DIM);
-  textAt(36, 116, "SAFE MODE", COL_GREEN);
-
-  drawFooter("NO TRANSMIT ACTIONS");
+  drawFooter("HOLD SEL BACK");
 }
 
 void drawGpsTool() {
   clearScreen();
-  drawHeader("GPS", "NAV");
+  drawDetailHeader("GPS", "NAV");
 
   if (gpsCharsProcessed() == 0) {
-    textAt(8, 33, "Module: offline", COL_AMBER);
-    textAt(8, 50, "Waiting for NMEA", COL_TEXT);
+    textAt(8, 49, "Module: offline", COL_AMBER);
+    textAt(8, 64, "Waiting for NMEA", COL_TEXT);
   } else if (!isGPSValid()) {
-    textAt(8, 33, "Fix: awaiting lock", COL_AMBER);
-    textAt(8, 50, String("Satellites: ") + String(getSatellites()), COL_TEXT);
-    textAt(8, 67, String("HDOP: ") + String(getHDOP(), 1), COL_TEXT);
+    textAt(8, 49, "Fix: awaiting lock", COL_AMBER);
+    textAt(8, 64, String("Satellites: ") + String(getSatellites()), COL_TEXT);
+    textAt(8, 79, String("HDOP: ") + String(getHDOP(), 1), COL_TEXT);
   } else {
-    textAt(8, 33, "Fix: valid", COL_GREEN);
-    textAt(8, 50, String("Lat ") + String(getLatitude(), 4), COL_TEXT);
-    textAt(8, 65, String("Lon ") + String(getLongitude(), 4), COL_TEXT);
-    textAt(8, 80, String("Sat ") + String(getSatellites()), COL_TEXT);
-    textAt(8, 95, String("Spd ") + String(getSpeed(), 1) + "km/h", COL_TEXT);
+    textAt(8, 48, "Fix: valid", COL_GREEN);
+    textAt(8, 61, String("Lat ") + String(getLatitude(), 4), COL_TEXT);
+    textAt(8, 74, String("Lon ") + String(getLongitude(), 4), COL_TEXT);
+    textAt(8, 87, String("Sat ") + String(getSatellites()), COL_TEXT);
+    textAt(8, 100, String("Spd ") + String(getSpeed(), 1) + "km/h", COL_TEXT);
   }
 
-  drawFooter("GPS FAILS GRACEFULLY");
+  drawFooter("HOLD SEL BACK");
 }
 
 void drawLightTool() {
   clearScreen();
-  drawHeader("LIGHT", "LOCK");
+  drawDetailHeader("LIGHT", "LOCK");
 
   const char *modeText = "standby";
   if (lightMode == 1) {
@@ -470,93 +555,103 @@ void drawLightTool() {
     modeText = "beacon B";
   }
 
-  textAt(8, 33, "LED beacon:", COL_GREEN);
-  textAt(78, 33, modeText, COL_TEXT);
-  textAt(8, 52, "Laser: locked", COL_AMBER);
-  textAt(8, 69, "SIG GPIO14: LOW", COL_TEXT);
-  textAt(8, 88, "Awaiting calibration", COL_GREEN_DIM);
+  textAt(8, 49, "LED beacon:", COL_GREEN);
+  textAt(78, 49, modeText, COL_TEXT);
+  textAt(8, 66, "Laser: locked", COL_AMBER);
+  textAt(8, 82, "SIG GPIO14: LOW", COL_TEXT);
 
-  tft.drawCircle(66, 120, 14, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
+  tft.drawCircle(132, 88, 14, lightMode == 0 ? COL_GREEN_DIM : COL_AMBER);
   if (lightMode != 0) {
-    tft.fillCircle(66, 120, 8, COL_AMBER_DIM);
+    tft.fillCircle(132, 88, 8, COL_AMBER_DIM);
   }
 
-  drawFooter("SELECT CYCLES LED");
+  drawFooter("SEL CYCLES  HOLD SEL BACK");
 }
 
 void drawBatteryTool() {
   clearScreen();
-  drawHeader("BATTERY", "PWR");
+  drawDetailHeader("BATTERY", "PWR");
 
   const float volts = batteryVoltage();
   const int pct = batteryPercent();
 
-  textAt(8, 34, "Sense pin: GPIO2", COL_GREEN_DIM);
-  textAt(8, 53, String("Voltage: ") + String(volts, 2) + "V", COL_TEXT);
-  textAt(8, 70, pct >= 0 ? String("Charge: ") + String(pct) + "% est" : String("Charge: offline"), COL_TEXT);
-  textAt(8, 87, String("Status: ") + String(batteryStatusText()), COL_AMBER);
+  textAt(8, 47, "Sense pin: GPIO2", COL_GREEN_DIM);
+  textAt(8, 61, String("Voltage: ") + String(volts, 2) + "V", COL_TEXT);
+  textAt(8, 75, pct >= 0 ? String("Charge: ") + String(pct) + "% est" : String("Charge: offline"), COL_TEXT);
+  textAt(8, 89, String("Status: ") + String(batteryStatusText()), COL_AMBER);
 
-  const int barWidth = pct >= 0 ? map(pct, 0, 100, 0, 92) : 0;
-  tft.drawRect(16, 112, 96, 12, COL_GREEN_DIM);
-  tft.fillRect(18, 114, barWidth, 8, pct < 20 ? COL_RED : COL_GREEN);
+  const int barWidth = pct >= 0 ? map(pct, 0, 100, 0, 60) : 0;
+  tft.drawRect(91, 101, 64, 12, COL_GREEN_DIM);
+  tft.fillRect(93, 103, barWidth, 8, pct < 20 ? COL_RED : COL_GREEN);
 
-  drawFooter("DIVIDER NEEDS CAL");
+  drawFooter("HOLD SEL BACK");
 }
 
 void drawSystemTool() {
   clearScreen();
-  drawHeader("SYSTEM", "INFO");
+  drawDetailHeader("SYSTEM", "INFO");
 
-  textAt(8, 31, SOUPBOY_BUILD_NAME, COL_AMBER);
-  textAt(8, 48, "MCU: ESP32-S3", COL_TEXT);
-  textAt(8, 63, "Display: 128x160", COL_TEXT);
-  textAt(8, 78, "Driver: ST7735", COL_TEXT);
-  textAt(8, 93, String("Uptime: ") + uptimeString(), COL_TEXT);
-  textAt(8, 108, "RF TX: disabled", COL_GREEN);
+  textAt(8, 46, SOUPBOY_BUILD_NAME, COL_AMBER);
+  textAt(8, 60, "MCU: ESP32-S3", COL_TEXT);
+  textAt(8, 73, String("Display: ") + String(screenW()) + "x" + String(screenH()), COL_TEXT);
+  textAt(8, 86, "Driver: ST7735", COL_TEXT);
+  textAt(8, 99, String("Uptime: ") + uptimeString(), COL_TEXT);
+  textAt(108, 86, "RF TX", COL_GREEN_DIM);
+  textAt(108, 99, "OFF", COL_GREEN);
 
-  drawFooter("FIRMWARE PROTOTYPE");
-}
-
-void drawToolDetail() {
-  switch (static_cast<ToolPage>(toolIndex)) {
-    case ToolPage::RfSafe: drawRfSafe(); break;
-    case ToolPage::WifiScan: drawWifiScan(); break;
-    case ToolPage::BleSafe: drawBleSafe(); break;
-    case ToolPage::Gps: drawGpsTool(); break;
-    case ToolPage::Light: drawLightTool(); break;
-    case ToolPage::Battery: drawBatteryTool(); break;
-    case ToolPage::SystemInfo: drawSystemTool(); break;
-  }
+  drawFooter("HOLD SEL BACK");
 }
 
 void drawStatus() {
   clearScreen();
-  drawHeader("STATUS", "ONLINE");
+  drawDetailHeader("STATUS", "ONLINE");
 
   const NrfStatus rf = nrfStatus();
-  textAt(8, 32, SOUPBOY_BUILD_NAME, COL_AMBER);
-  textAt(8, 49, String("Uptime: ") + uptimeString(), COL_TEXT);
-  textAt(8, 64, String("Battery: ") + String(batteryStatusText()), COL_TEXT);
-  textAt(8, 79, String("GPS: ") + String(isGPSValid() ? "fix" : "standby"), COL_TEXT);
-  textAt(8, 94, String("RF: ") + String(rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
-  textAt(8, 109, "WiFi: passive scan", COL_TEXT);
-  textAt(8, 124, "Display: ready", COL_TEXT);
+  textAt(8, 46, String("Uptime: ") + uptimeString(), COL_TEXT);
+  textAt(8, 59, String("Battery: ") + String(batteryStatusText()), COL_TEXT);
+  textAt(8, 72, String("GPS: ") + String(isGPSValid() ? "fix" : "standby"), COL_TEXT);
+  textAt(8, 85, String("RF: ") + String(rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
+  textAt(8, 98, "WiFi: passive scan", COL_TEXT);
 
-  drawFooter("SURVIVAL SYSTEMS SAFE");
+  drawFooter("HOLD SEL BACK");
 }
 
 void drawAbout() {
   clearScreen();
-  drawHeader("ABOUT", "HP");
+  drawDetailHeader("ABOUT", "HP");
 
-  centerText(33, "SOUPBOY", COL_AMBER, 2);
-  centerText(57, "Hardware Pirates", COL_GREEN);
-  centerText(73, "Fallout Hackathon", COL_TEXT);
-  centerText(91, "Stay warm.", COL_TEXT);
-  centerText(105, "Stay soupy.", COL_TEXT);
-  centerText(124, "github/0Zane/soupboy", COL_GREEN_DIM);
+  centerText(49, "SOUPBOY", COL_AMBER, 2);
+  centerText(74, "Hardware Pirates", COL_GREEN);
+  centerText(88, "Fallout Hackathon", COL_TEXT);
+  centerText(102, "Stay warm. Stay soupy.", COL_TEXT);
 
-  drawFooter("FALLING OUT, SUCCESSFULLY.");
+  drawFooter("HOLD SEL BACK");
+}
+
+void drawDetail() {
+  switch (activeEntry) {
+    case EntryKind::WifiScan: drawWifiScan(); break;
+    case EntryKind::Gps: drawGpsTool(); break;
+    case EntryKind::Light: drawLightTool(); break;
+    case EntryKind::Avatar: drawAvatar(); break;
+    case EntryKind::Status: drawStatus(); break;
+    case EntryKind::Battery: drawBatteryTool(); break;
+    case EntryKind::SystemInfo: drawSystemTool(); break;
+    case EntryKind::About: drawAbout(); break;
+    case EntryKind::RfSafe: drawRfSafe(); break;
+    case EntryKind::BleSafe: drawBleSafe(); break;
+  }
+}
+
+bool isAnimated() {
+  if (view == View::Menu) {
+    return false;
+  }
+
+  return activeEntry == EntryKind::Avatar ||
+         activeEntry == EntryKind::RfSafe ||
+         activeEntry == EntryKind::WifiScan ||
+         activeEntry == EntryKind::Light;
 }
 
 }  // namespace
@@ -572,21 +667,22 @@ void screenBegin() {
 void screenShowBoot() {
   tft.fillScreen(COL_BG);
   drawCornerBrackets(COL_GREEN_DIM);
-  centerText(24, "SOUPBOY OS", COL_AMBER, 2);
-  centerText(48, "Hardware Pirates", COL_GREEN);
-  centerText(63, "Fallout Hackathon", COL_TEXT);
+  centerText(20, "SOUPBOY OS", COL_AMBER, 2);
+  centerText(46, "Hardware Pirates", COL_GREEN);
+  centerText(61, "Fallout Hackathon", COL_TEXT);
 
-  tft.drawRect(14, 94, 100, 12, COL_GREEN_DIM);
+  const int16_t barX = (screenW() - 104) / 2;
+  tft.drawRect(barX, 82, 104, 12, COL_GREEN_DIM);
   for (uint8_t step = 0; step <= 100; step += 4) {
-    const int width = map(step, 0, 100, 0, 96);
-    tft.fillRect(16, 96, width, 8, step < 70 ? COL_GREEN : COL_AMBER);
+    const int width = map(step, 0, 100, 0, 100);
+    tft.fillRect(barX + 2, 84, width, 8, step < 70 ? COL_GREEN : COL_AMBER);
 
     if (step % 12 == 0) {
-      tft.drawFastHLine(8, 77 + (step % 18), 112, COL_GREEN_DIM);
+      tft.drawFastHLine(18, 70 + (step % 10), screenW() - 36, COL_GREEN_DIM);
     }
 
-    textAt(20, 115, "Survival systems", COL_TEXT);
-    textAt(38, 128, step < 100 ? "loading..." : "online", step < 100 ? COL_GREEN_DIM : COL_GREEN);
+    centerText(101, "Survival systems", COL_TEXT);
+    centerText(114, step < 100 ? "loading..." : "online", step < 100 ? COL_GREEN_DIM : COL_GREEN);
     delay(38);
   }
 
@@ -600,22 +696,17 @@ void screenUpdate(InputEvent event) {
   handleEvent(event);
 
   const uint32_t now = millis();
-  const bool animated = page == Page::Home || page == Page::Avatar ||
-                        page == Page::ToolDetail;
-  if (!dirty && (!animated || now - lastFrameAt < kFrameMs)) {
+  if (!dirty && (!isAnimated() || now - lastFrameAt < kFrameMs)) {
     return;
   }
 
   lastFrameAt = now;
   dirty = false;
 
-  switch (page) {
-    case Page::Home: drawHome(); break;
-    case Page::Avatar: drawAvatar(); break;
-    case Page::Tools: drawTools(); break;
-    case Page::ToolDetail: drawToolDetail(); break;
-    case Page::Status: drawStatus(); break;
-    case Page::About: drawAbout(); break;
+  if (view == View::Menu) {
+    drawMenu();
+  } else {
+    drawDetail();
   }
 }
 

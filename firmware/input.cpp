@@ -21,8 +21,8 @@ bool readButton(int pin) {
 }
 
 ButtonState buttons[] = {
-  {PIN_BUTTON_PREV, InputEvent::Previous, InputEvent::None, false, false, false, 0, 0},
-  {PIN_BUTTON_NEXT, InputEvent::Next, InputEvent::None, false, false, false, 0, 0},
+  {PIN_BUTTON_PREV, InputEvent::Previous, InputEvent::Left, false, false, false, 0, 0},
+  {PIN_BUTTON_NEXT, InputEvent::Next, InputEvent::Right, false, false, false, 0, 0},
   {PIN_BUTTON_SELECT, InputEvent::Select, InputEvent::Back, false, false, false, 0, 0},
 };
 

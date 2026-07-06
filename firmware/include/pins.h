@@ -5,16 +5,17 @@
 // SoupBoy pin map from the ESP32-S3 schematic.
 // Keep all hardware assumptions here so board revisions only touch one file.
 
-// 1.8" 128x160 SPI display.
+// 1.8" 128x160 SPI display. Rotation 1 turns the full UI for the wrist mount
+// so the long side of the display can sit across the hand.
 constexpr int PIN_DISPLAY_RST = 8;
 constexpr int PIN_DISPLAY_DC = 9;
 constexpr int PIN_DISPLAY_CS = 10;
 constexpr int PIN_DISPLAY_CS_ALT = 7;  // Schematic has a second CS label; reserved.
 constexpr int PIN_DISPLAY_MOSI = 11;
 constexpr int PIN_DISPLAY_SCLK = 12;
-constexpr int SCREEN_WIDTH = 128;
-constexpr int SCREEN_HEIGHT = 160;
-constexpr int SCREEN_ROTATION = 0;
+constexpr int SCREEN_WIDTH = 160;
+constexpr int SCREEN_HEIGHT = 128;
+constexpr int SCREEN_ROTATION = 1;
 
 // Physical buttons. The schematic drives these from a 3V3 ladder, so they are
 // treated as active-high with internal pulldowns.

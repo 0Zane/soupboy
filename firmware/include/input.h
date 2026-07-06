@@ -6,6 +6,8 @@ enum class InputEvent : uint8_t {
   None,
   Previous,
   Next,
+  Left,
+  Right,
   Select,
   Back,
 };
