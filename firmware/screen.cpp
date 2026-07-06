@@ -20,6 +20,7 @@ void drawmenu(){}
 Button: AIR SCAN --> popup (air humidity, air temperature, air pressure)
 Button: COPY IR --> listening to IR signal
 Button: emit last IR --> emits the last copied IR signal
+button: get GPS coordonates
 
 */
 

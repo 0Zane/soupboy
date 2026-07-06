@@ -2,7 +2,7 @@
 #include <include/pins.h>
 
 
-void updatered(bool state){
+void updateyellow(bool state){
     digitalWrite(RED,state);
 }
 
