@@ -33,10 +33,6 @@ constexpr uint16_t BUTTON_LONG_PRESS_MS = 850;
 // Battery divider: +BATT -> 100K -> GPIO2/INT -> 100K -> GND.
 constexpr int PIN_BATTERY_ADC = 2;
 constexpr float BATTERY_DIVIDER_RATIO = 2.0f;
-// GPS pins (ESP32-S3)
-#define PIN_GPS_RX  16
-#define PIN_GPS_TX  17
-#define PIN_GPS_PPS 13
 // GPS NEO-6M UART.
 constexpr int PIN_GPS_RX = 16;
 constexpr int PIN_GPS_TX = 17;
@@ -47,6 +43,7 @@ constexpr uint32_t GPS_BAUD = 9600;
 // after the module is soldered. Do not power the final module from GPIO unless
 // its current draw is confirmed safe.
 constexpr int PIN_IR_OUT = 35;
+#define PIN_IR_RECV   PIN_IR_OUT
 constexpr int PIN_IR_VCC = 36;
 constexpr int PIN_IR_GND = 37;
 
@@ -67,10 +64,3 @@ constexpr int PIN_NRF_IRQ = -1;
 // Compatibility aliases for older sketch code and common GPS examples.
 #define RXD2 PIN_GPS_RX
 #define TXD2 PIN_GPS_TX
-
-// nRF24L01+ pins
-#define PIN_NRF_CE   16
-#define PIN_NRF_CSN  15
-#define PIN_NRF_SCK  14
-#define PIN_NRF_MOSI 13
-#define PIN_NRF_MISO 12

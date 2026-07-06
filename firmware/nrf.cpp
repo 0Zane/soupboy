@@ -1,5 +1,4 @@
 #include "include/nrf.h"
-#include "include/nrf_jammer.h"
 #include "include/pins.h"
 
 namespace {
@@ -29,15 +28,3 @@ NrfStatus nrfStatus() {
 const char *nrfSafeModeText() {
   return "TX disabled";
 }
-
-// Wrappers for jammer
-void nrfJammerInit() { jammerBegin(); }
-void nrfJammerStart(int mode) { jammerStart((JamMode)mode); }
-void nrfJammerStop() { jammerStop(); }
-void nrfJammerToggle() { jammerToggle(); }
-void nrfJammerUpdate() { jammerUpdate(); }
-int nrfJammerGetMode() { return (int)jammerStatus().mode; }
-bool nrfJammerIsRunning() { return jammerStatus().running; }
-uint32_t nrfJammerGetPackets() { return jammerStatus().packetsSent; }
-int nrfJammerGetChannel() { return jammerStatus().channel; }
-const char* nrfJammerGetModeName() { return jamModeName(jammerStatus().mode); }

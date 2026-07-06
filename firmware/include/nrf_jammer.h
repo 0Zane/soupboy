@@ -1,7 +1,8 @@
 #pragma once
 #include <Arduino.h>
 
-// Jammer modes
+// Legacy transmit API kept as disabled stubs so older code still links without
+// enabling RF transmission.
 enum JamMode : uint8_t {
     JAM_BLE_21,      // 21 BLE channels
     JAM_BLE_80,      // 80 channels (full 2.4GHz sweep)
@@ -21,11 +22,10 @@ struct JammerStatus {
     const char* message;
 };
 
-// API
 void jammerBegin();
 void jammerStart(JamMode mode);
 void jammerStop();
 void jammerToggle();
-void jammerUpdate();  // call in loop
+void jammerUpdate();
 JammerStatus jammerStatus();
 const char* jamModeName(JamMode mode);

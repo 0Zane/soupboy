@@ -34,9 +34,7 @@ void loop() {
   irToolUpdate();
   wifiScanUpdate();
   wifiNameUpdate();
-  nrfJammerUpdate(); 
   ledHeartbeat();
-  updateGPS();
 
   if (gpsHasPPS()) {
     // A new second has arrived – trigger time-sensitive tasks

@@ -60,7 +60,6 @@ enum class EntryKind : uint8_t {
   SystemInfo,
   About,
   RfSafe,
-  NrfJammer,
 };
 
 struct MenuEntry {
@@ -101,10 +100,9 @@ const MenuEntry deviceItems[] = {
 };
 
 const MenuEntry rfItems[] = {
-  {"RF Safe", EntryKind::RfSafe},
+  {"nRF Status", EntryKind::RfSafe},
   {"WiFi Scan", EntryKind::WifiScan},
   {"WiFi Names", EntryKind::WifiNames},
-  {"nRF Jammer", EntryKind::NrfJammer},
 };
 
 const char *const avatarLines[] = {
@@ -268,7 +266,7 @@ void transitionWipe() {
 }
 
 uint8_t ledForEntry(EntryKind entry) {
-  if (entry == EntryKind::WifiScan || entry == EntryKind::WifiNames || entry == EntryKind::RfSafe || entry == EntryKind::NrfJammer) {
+  if (entry == EntryKind::WifiScan || entry == EntryKind::WifiNames || entry == EntryKind::RfSafe) {
     return 0;
   }
   if (entry == EntryKind::Gps || entry == EntryKind::IrTool) {
@@ -424,7 +422,7 @@ void drawSubmenuContent() {
     const bool running = wifiNameState() == WiFiNameState::Running;
     textAt(8, y0, "Demo SSID beacons", running ? COL_GREEN : COL_AMBER);
     textAt(8, y0 + 14, String("State: ") + wifiNameStateText(), running ? COL_GREEN : COL_TEXT);
-    textAt(92, y0 + 14, running ? "SEL stop" : "SEL start", COL_AMBER);
+    textAt(102, y0 + 14, running ? "SEL stop" : "SEL start", COL_AMBER);
     textAt(8, y0 + 28, String("Name: ") + clipped(String(wifiNameCurrentSSID()), 16), COL_TEXT);
     textAt(8, y0 + 42, String("Sent: ") + String(wifiNameSentCount()), COL_GREEN_DIM);
     textAt(83, y0 + 42, String("Ch ") + String(wifiNameChannel()), COL_GREEN_DIM);
@@ -452,7 +450,7 @@ void drawSubmenuContent() {
   } else if (entry == EntryKind::Avatar) {
     drawAvatarBitmap(10, y0 - 2);
     textAt(67, y0 + 3, clipped(String(avatarLines[avatarLine]), 14), COL_TEXT);
-    textAt(67, y0 + 19, "Select changes line", COL_GREEN_DIM);
+    textAt(67, y0 + 19, "SEL next line", COL_GREEN_DIM);
     textAt(67, y0 + 35, "Soup ready", COL_AMBER);
   } else if (entry == EntryKind::Status) {
     const NrfStatus rf = nrfStatus();
