@@ -52,10 +52,11 @@ This project is created by Hardware Pirates who are destined to steal your *gold
 In the period of time where the world is ending you will need this features for survival.
 
 - **GPS Allocation** - Have access to your location anywhere
-- **RF Jamming System** - Alter others connections ensuring dominance over the digital enemies around you
+- **RF Safe Mode** - Diagnostic RF status pages with transmit actions disabled
+- **Passive WiFi Scan** - Lists nearby networks for demo/status use only
 - **Laser Module** - Have a decoy that will confuse other survivors of what is happening for when your laser shines.
 - **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
-- **Weather Station** - Have an overview on what is the current state of the weather 
+- **SoupBoy UI** - Boot animation, avatar, tools, status, and about screens
 
 ---
 
@@ -64,8 +65,7 @@ In the period of time where the world is ending you will need this features for 
 | Subsystem | Component | Description |
 |---|---|---|
 | MCU | ESP32-S3-DevKitC1 | 16MB Flash, 8 MB PSRAM, Xtensa LX7 dual-core |
-| Sensors | ... | Access to weather information |
-| Signal Jammer | nRF24L01 module | Frequency emitter |
+| RF Header | nRF24L01 module | Safe diagnostics/status placeholder; TX disabled in firmware |
 | GPS | GPS Neo-6M | UART Interface for navigation |
 | Display | 128x160 OLED 1.8" | SPI Interface |
 | Battery | Li-Ion battery pack 2S1P 3200mAh |
@@ -84,10 +84,65 @@ In the period of time where the world is ending you will need this features for 
 
 ---
 
-#Firmware
+# Firmware
 
-Firmware features:
-- ...
+The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It currently builds a polished hackathon prototype UI:
+
+- Boot sequence with SoupBoy OS branding
+- Main menu with avatar, tools, status, and about pages
+- Soup avatar bitmap generated from `soup-avatar.png`
+- Safe tools pages for RF, BLE, GPS, light/laser, battery, WiFi, and system info
+- Passive WiFi scanning only
+- RF/BLE transmit actions disabled
+- GPS and RF pages fail gracefully when modules are offline
+
+No temperature or weather-station features are implemented.
+
+## Pin Map
+
+Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
+
+| Function | ESP32-S3 Pin |
+|---|---|
+| Display RST | GPIO8 |
+| Display DC | GPIO9 |
+| Display CS | GPIO10 |
+| Display SDA/MOSI | GPIO11 |
+| Display SCL/SCK | GPIO12 |
+| Button BT1 / Select | GPIO6 |
+| Button BT2 / Previous | GPIO4 |
+| Button BT3 / Next | GPIO5 |
+| Battery divider / INT label | GPIO2 |
+| GPS RX | GPIO16 |
+| GPS TX | GPIO17 |
+| GPS PPS / shared label | GPIO13 |
+| Signal / laser control | GPIO14, held LOW by default |
+| LED1 | GPIO15 |
+| LED2 | GPIO18 |
+| LED3 | GPIO21 |
+
+The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and RF TX remains disabled.
+
+## Build and Upload
+
+Arduino IDE:
+
+1. Open [`firmware/firmware.ino`](firmware/firmware.ino).
+2. Select an ESP32-S3 DevKitC board.
+3. Install libraries:
+   - Adafruit GFX Library
+   - Adafruit ST7735 and ST7789 Library
+   - TinyGPSPlus
+4. Compile and upload.
+
+PlatformIO:
+
+```bash
+pio run
+pio run --target upload
+```
+
+If the display colors or offsets are wrong for a specific 1.8" module, adjust `INITR_BLACKTAB` or `SCREEN_ROTATION` in the firmware.
 
 ```bash
 SOUP/
