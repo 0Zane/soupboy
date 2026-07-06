@@ -17,17 +17,24 @@ add cool futuristic visuals if you can */
 void drawmenu(){}
 
 /*Page 2 TOOLS
-Here we will see the air temperature
-air humidityz
-air pressure
+Button: AIR SCAN --> popup (air humidity, air temperature, air pressure)
+Button: COPY IR --> listening to IR signal
+Button: emit last IR --> emits the last copied IR signal
+
 */
 
 /*Page 3 DEVICE
+ "Soup boy "
+ "ESP32-S3"
+ "RAM: 8MB"
+ "FLASH: 8MB"
+display: device uptime
 
 */
 
 
 /*PAGE 4 RF
-Here we have dif
+Button 1: JAM Bluetooth -> popup saying jamming
+BUtton 2: scan wifi -> popup with results
+BUtton 3: copy signal 
 
-*/
