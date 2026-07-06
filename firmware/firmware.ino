@@ -36,7 +36,14 @@ void loop() {
   wifiNameUpdate();
   nrfJammerUpdate(); 
   ledHeartbeat();
+  updateGPS();
 
+  if (gpsHasPPS()) {
+    // A new second has arrived – trigger time-sensitive tasks
+    Serial.printf("PPS at %u ms\n", gpsLastPPSMillis());
+    // e.g., update RTC, sample sensors, etc.
+  }
+  // ..
   const InputEvent event = inputUpdate();
   screenUpdate(event);
 }

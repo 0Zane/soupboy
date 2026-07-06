@@ -33,7 +33,10 @@ constexpr uint16_t BUTTON_LONG_PRESS_MS = 850;
 // Battery divider: +BATT -> 100K -> GPIO2/INT -> 100K -> GND.
 constexpr int PIN_BATTERY_ADC = 2;
 constexpr float BATTERY_DIVIDER_RATIO = 2.0f;
-
+// GPS pins (ESP32-S3)
+#define PIN_GPS_RX  16
+#define PIN_GPS_TX  17
+#define PIN_GPS_PPS 13
 // GPS NEO-6M UART.
 constexpr int PIN_GPS_RX = 16;
 constexpr int PIN_GPS_TX = 17;

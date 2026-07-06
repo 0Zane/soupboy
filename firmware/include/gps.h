@@ -23,3 +23,7 @@ double getSpeed();
 double getAltitude();
 String getDateTime();
 uint32_t gpsCharsProcessed();
+// NEW: PPS related
+void gpsPPSInterrupt();   // ISR handler (must be declared with IRAM_ATTR)
+bool gpsHasPPS();
+uint32_t gpsLastPPSMillis();
