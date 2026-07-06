@@ -26,13 +26,14 @@ void setup() {
   screenShowBoot();
 
   Serial.println(screenBuildName());
-  Serial.println("RF TX disabled until nRF pins are mapped. Passive WiFi scan only.");
+  Serial.println("RF tab includes safe nRF diagnostics, WiFi scan, and demo WiFi names.");
 }
 
 void loop() {
   updateGPS();
   irToolUpdate();
   wifiScanUpdate();
+  wifiNameUpdate();
   ledHeartbeat();
 
   const InputEvent event = inputUpdate();

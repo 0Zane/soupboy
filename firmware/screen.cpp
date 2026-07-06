@@ -32,6 +32,7 @@ constexpr uint16_t COL_DARK_TEXT = rgb(6, 12, 8);
 
 constexpr uint8_t kTabCount = 3;
 constexpr uint32_t kFrameMs = 145;
+constexpr uint32_t kLiveRefreshMs = 240;
 constexpr int16_t kTabBarHeight = 22;
 constexpr int16_t kFooterHeight = 14;
 
@@ -50,6 +51,7 @@ enum class Tab : uint8_t {
 
 enum class EntryKind : uint8_t {
   WifiScan,
+  WifiNames,
   Gps,
   IrTool,
   Avatar,
@@ -74,6 +76,8 @@ bool dirty = true;
 uint32_t lastFrameAt = 0;
 WiFiScanState lastWifiDrawState = WiFiScanState::Idle;
 int lastWifiDrawCount = -1;
+WiFiNameState lastWifiNameDrawState = WiFiNameState::Idle;
+uint32_t lastWifiNameDrawCount = 0;
 IRToolState lastIrDrawState = IRToolState::Idle;
 
 const char *const tabLabels[kTabCount] = {
@@ -98,6 +102,7 @@ const MenuEntry deviceItems[] = {
 const MenuEntry rfItems[] = {
   {"RF Safe", EntryKind::RfSafe},
   {"WiFi Scan", EntryKind::WifiScan},
+  {"WiFi Names", EntryKind::WifiNames},
 };
 
 const char *const avatarLines[] = {
@@ -261,7 +266,7 @@ void transitionWipe() {
 }
 
 uint8_t ledForEntry(EntryKind entry) {
-  if (entry == EntryKind::WifiScan || entry == EntryKind::RfSafe) {
+  if (entry == EntryKind::WifiScan || entry == EntryKind::WifiNames || entry == EntryKind::RfSafe) {
     return 0;
   }
   if (entry == EntryKind::Gps || entry == EntryKind::IrTool) {
@@ -303,6 +308,8 @@ void activateEntry() {
 
   if (activeEntry == EntryKind::WifiScan) {
     wifiScanStart();
+  } else if (activeEntry == EntryKind::WifiNames) {
+    wifiNameToggle();
   } else if (activeEntry == EntryKind::IrTool) {
     irToolActivate();
   } else if (activeEntry == EntryKind::Avatar) {
@@ -411,6 +418,15 @@ void drawSubmenuContent() {
         textAt(102, y, String(wifiRSSI(i)) + "dB", COL_GREEN_DIM);
       }
     }
+  } else if (entry == EntryKind::WifiNames) {
+    const bool running = wifiNameState() == WiFiNameState::Running;
+    textAt(8, y0, "Demo SSID beacons", running ? COL_GREEN : COL_AMBER);
+    textAt(8, y0 + 14, String("State: ") + wifiNameStateText(), running ? COL_GREEN : COL_TEXT);
+    textAt(92, y0 + 14, running ? "SEL stop" : "SEL start", COL_AMBER);
+    textAt(8, y0 + 28, String("Name: ") + clipped(String(wifiNameCurrentSSID()), 16), COL_TEXT);
+    textAt(8, y0 + 42, String("Sent: ") + String(wifiNameSentCount()), COL_GREEN_DIM);
+    textAt(83, y0 + 42, String("Ch ") + String(wifiNameChannel()), COL_GREEN_DIM);
+    textAt(119, y0 + 42, String(wifiNameDelayMs()) + "ms", COL_GREEN_DIM);
   } else if (entry == EntryKind::Gps) {
     if (gpsCharsProcessed() == 0) {
       textAt(8, y0, "GPS module offline", COL_AMBER);
@@ -441,7 +457,7 @@ void drawSubmenuContent() {
     textAt(8, y0, String("Uptime: ") + uptimeString(), COL_TEXT);
     textAt(8, y0 + 14, String("Battery: ") + batteryStatusText(), COL_TEXT);
     textAt(8, y0 + 28, String("GPS: ") + (isGPSValid() ? "fix" : "standby"), COL_TEXT);
-    textAt(8, y0 + 42, String("RF: ") + (rf.txEnabled ? "TX on" : "safe"), COL_GREEN);
+    textAt(8, y0 + 42, String("RF: ") + (wifiNameState() == WiFiNameState::Running ? "WiFi names" : (rf.txEnabled ? "TX on" : "safe")), COL_GREEN);
   } else if (entry == EntryKind::Battery) {
     const float volts = batteryVoltage();
     const int pct = batteryPercent();
@@ -455,14 +471,14 @@ void drawSubmenuContent() {
     textAt(8, y0, SOUPBOY_BUILD_NAME, COL_AMBER);
     textAt(8, y0 + 15, "MCU: ESP32-S3", COL_TEXT);
     textAt(8, y0 + 30, String("Display: ") + String(screenW()) + "x" + String(screenH()), COL_TEXT);
-    textAt(8, y0 + 45, "RF TX: disabled", COL_GREEN);
+    textAt(8, y0 + 45, "nRF TX: disabled", COL_GREEN);
   } else if (entry == EntryKind::About) {
     centerText(y0, "SOUPBOY", COL_AMBER, 2);
     centerText(y0 + 25, "Hardware Pirates", COL_GREEN);
     centerText(y0 + 40, "Fallout Hackathon", COL_TEXT);
   } else if (entry == EntryKind::RfSafe) {
     const NrfStatus rf = nrfStatus();
-    textAt(8, y0, "RF TX disabled", COL_GREEN);
+    textAt(8, y0, "nRF TX disabled", COL_GREEN);
     textAt(8, y0 + 15, rf.moduleDetected ? "Module detected" : "Module offline", COL_TEXT);
     textAt(8, y0 + 30, clipped(String(rf.message), 19), COL_GREEN_DIM);
     textAt(8, y0 + 45, "Select refreshes", COL_AMBER);
@@ -519,9 +535,16 @@ void screenShowBoot() {
 }
 
 void screenUpdate(InputEvent event) {
+  const uint32_t now = millis();
+
   wifiScanUpdate();
   if (view == View::Submenu && activeEntry == EntryKind::WifiScan &&
       (wifiScanState() != lastWifiDrawState || wifiScanCount() != lastWifiDrawCount)) {
+    dirty = true;
+  }
+  if (view == View::Submenu && activeEntry == EntryKind::WifiNames &&
+      (wifiNameState() != lastWifiNameDrawState ||
+       (wifiNameSentCount() != lastWifiNameDrawCount && now - lastFrameAt >= kLiveRefreshMs))) {
     dirty = true;
   }
   if (view == View::Submenu && activeEntry == EntryKind::IrTool &&
@@ -530,7 +553,6 @@ void screenUpdate(InputEvent event) {
   }
   handleEvent(event);
 
-  const uint32_t now = millis();
   if (!dirty && (!isAnimated() || now - lastFrameAt < kFrameMs)) {
     return;
   }
@@ -546,6 +568,8 @@ void screenUpdate(InputEvent event) {
 
   lastWifiDrawState = wifiScanState();
   lastWifiDrawCount = wifiScanCount();
+  lastWifiNameDrawState = wifiNameState();
+  lastWifiNameDrawCount = wifiNameSentCount();
   lastIrDrawState = irToolState();
 }
 

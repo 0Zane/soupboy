@@ -52,8 +52,9 @@ This project is created by Hardware Pirates who are destined to steal your *gold
 In the period of time where the world is ending you will need this features for survival.
 
 - **GPS Allocation** - Have access to your location anywhere
-- **RF Safe Mode** - Diagnostic RF status pages with transmit actions disabled
+- **RF Safe Mode** - Diagnostic nRF status pages with nRF transmit actions disabled
 - **Passive WiFi Scan** - Lists nearby networks for demo/status use only
+- **WiFi Names** - RF-tab demo that advertises rotating funny SSID names with no deauth or client targeting
 - **IR Tool** - Placeholder read/copy workflow for the IR module before final pins are soldered
 - **Long Lasting Battery** - In a doomsday-like times you need a gadget thats going to last a long time
 - **SoupBoy UI** - Wrist-rotated boot animation, tab navigation, avatar, tools, device, and RF screens
@@ -94,9 +95,9 @@ The firmware is an Arduino-style ESP32-S3 sketch in [`firmware/`](firmware/). It
 - Navbar-first navigation: left/right changes tabs, select enters the tab submenu, and holding select returns to the navbar
 - Submenu navigation: left/right changes the selected feature button, and select activates that feature
 - Soup avatar bitmap generated from `soup-avatar.png`
-- Working pages for GPS, IR tool placeholder, battery, status, system info, avatar, about, RF diagnostics, and WiFi scan under RF
-- Passive WiFi scanning only
-- RF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
+- Working pages for GPS, IR tool placeholder, battery, status, system info, avatar, about, RF diagnostics, WiFi scan, and WiFi Names under RF
+- Passive WiFi scanning, plus a selectable WiFi Names demo that advertises the built-in funny SSID list on common 2.4 GHz channels
+- nRF transmit actions disabled until nRF CE/CSN/MISO pins are mapped
 - GPS and RF pages fail gracefully when modules are offline
 
 No temperature or weather-station features are implemented.
@@ -126,7 +127,7 @@ Pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h).
 | LED2 | GPIO18 |
 | LED3 | GPIO21 |
 
-The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and RF TX remains disabled.
+The schematic print shows an extra `CS` label on GPIO7 and does not clearly map all NRF24L01 CE/CSN/MISO nets back to ESP32 pins. Those are left as reserved/unknown in firmware, and nRF TX remains disabled.
 
 Button input uses a 70 ms debounce window and a 220 ms repeat guard so one press does not generate multiple UI actions.
 

@@ -4,7 +4,7 @@
 
 #include "input.h"
 
-constexpr const char *SOUPBOY_BUILD_NAME = "SoupBoy OS v0.4";
+constexpr const char *SOUPBOY_BUILD_NAME = "SoupBoy OS v0.5";
 
 void screenBegin();
 void screenShowBoot();
