@@ -41,11 +41,10 @@ When the world is ending, you need these features to survive:
 | Feature | Description |
 |---------|-------------|
 | 🗺️ **GPS Location** | Know exactly where you are when everything else is lost |
-| 📡 **RF Safe Mode** | Diagnostic nRF status with TX disabled (safety first!) |
+| 📡 **RF Jammer** | Jamming Bluetooth with NRF24 |
 | 📶 **Passive WiFi Scan** | See nearby networks for intel gathering |
 | 🍕 **WiFi Names** | Broadcast funny SSIDs to confuse the wastelanders |
 | 🔦 **IR Tool** | Copy remote codes (receive-only for now) |
-| 🔋 **Long Battery Life** | 3200mAh of wasteland endurance |
 | 🎨 **SoupBoy UI** | Cozy retro UI with wrist-rotated display, avatar, and tabs |
 
 ---
@@ -58,9 +57,7 @@ When the world is ending, you need these features to survive:
 | **📡 RF** | nRF24L01+ | 2.4GHz radio — TX disabled in firmware |
 | **🗺️ GPS** | NEO-6M | UART navigation for finding your way |
 | **🖥️ Display** | 128x160 OLED 1.8" | SPI interface, wrist-rotated |
-| **🔋 Power** | 2S1P 3200mAh Li-Ion | Long-lasting wasteland endurance |
-| **⚡ 5V Rail** | LM2597 Buck Converter | Stable power for the MCU |
-| **🔦 IR** | 3-pin IR Receiver | Remote code copying (receive-only) |
+| **🔦 IR** | 3-pin IR Trans-Receiver | Remote code copying and emitting |
 
 ---
 
@@ -70,7 +67,6 @@ When the world is ending, you need these features to survive:
 
 📄 *For a detailed overview, check the [PDF](schematic.pdf)*
 
-<img src="./Pictures/MCU_Sch.png" width="100%" alt="MCU Schematic">
 
 ---
 
@@ -105,7 +101,7 @@ All pins are centralized in [`firmware/include/pins.h`](firmware/include/pins.h)
 | Display SDA/MOSI | GPIO11 |
 | Display SCL/SCK | GPIO12 |
 | Button Left | GPIO6 |
-| Button Middle / Select (hold = Navbar) | GPIO41 |
+| Button Middle / Select (hold = Navbar) | GPIO42 |
 | Button Right | GPIO5 |
 | Battery Divider | GPIO2 |
 | GPS RX | GPIO16 |
