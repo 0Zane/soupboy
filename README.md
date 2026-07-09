@@ -1,6 +1,7 @@
 <div align="center">
 
 # 🍜 SoupBoy
+![zine](https://github.com/0Zane/soupboy/blob/15d85e7b309d412bfabdbaf0aa92282a58914918/zinesoupboy.png)
 
 <p>
   <img src="case.png" width="300" alt="SoupBoy Device">
