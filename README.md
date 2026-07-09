@@ -25,15 +25,6 @@ Built with ❤️ by the **Hardware Pirates** — destined to steal your *golden
 
 ---
 
-## 📖 Zine
-
-<div align="center">
-  <img src="./Pictures/ X.png" width="600" alt="SoupBoy Zine Cover">
-  <br>
-  <em>Check out our full zine in the repo!</em>
-</div>
-
-
 
 ## 🌟 Features
 
