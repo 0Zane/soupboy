@@ -3,9 +3,6 @@
 # 🍜 SoupBoy
 ![zine](https://github.com/0Zane/soupboy/blob/15d85e7b309d412bfabdbaf0aa92282a58914918/zinesoupboy.png)
 
-<p>
-  <img src="case.png" width="300" alt="SoupBoy Device">
-</p>
 
 ### ✨ _A pipboy-like watch that's gonna be the handiest gadget when you start falling out._ ✨
 
@@ -58,7 +55,17 @@ When the world is ending, you need these features to survive:
 ### Schematic
 
 📄 *For a detailed overview, check the [PDF](schematic.pdf)*
+---
 
+## 3D printed case
+<div align="center">
+
+<p>
+  <img src="case.png" width="300" alt="SoupBoy Device">
+</p>
+
+
+</div>
 
 ---
 
