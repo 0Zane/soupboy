@@ -20,6 +20,12 @@ Introducing ***SOUP BOY*** — your wrist-mounted companion for navigating the c
 
 Built with ❤️ by the **Hardware Pirates** — destined to steal your *golden koi* when civilization crumbles.
 
+
+
+https://github.com/user-attachments/assets/bddd1344-4006-4bd7-a586-17da1ab2a5b3
+
+
+
 ---
 
 
